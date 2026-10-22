@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<title>Bandeja de auditoría · Qflow</title>
+<style>
+:root{
+  /* colores del sistema: rojo, negro y gris */
+  --bg:#f3f3f3; --card:#ffffff; --ink:#141414; --muted:#5e5e5e; --line:#dadada; --soft:#ececec;
+  --navy:#111111; --navy2:#2b2b2b; --accent:#da291c; --accent-soft:#fde2e1;
+  --ok:#1a1a1a; --ok-soft:#e6e6e6; --bad:#da291c; --bad-soft:#fde2e1; --warn:#6b6b6b; --warn-soft:#ececec;
+  --gris:#7a7a7a; --rojo2:#a50f15;
+  --req:#fde2e1; --req-line:#ef9a93; --hint:#f2f2f2; --hint-line:#d4d4d4;
+  --radius:10px; --shadow:0 1px 2px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+::selection{background:var(--accent-soft)}
+h1,h2,h3{margin:0;line-height:1.25}
+h2{font-size:18px} h3{font-size:15px}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.wrap{max-width:1320px;margin:0 auto;padding:16px}
+/* barra superior */
+.top{background:var(--navy);color:#fff;position:sticky;top:0;z-index:20;border-bottom:3px solid var(--accent)}
+.top .wrap{display:flex;align-items:center;gap:16px;padding-top:10px;padding-bottom:10px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:16px;letter-spacing:.2px;white-space:nowrap}
+.brand span{opacity:.65;font-weight:500}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{background:transparent;border:0;color:#cfcfcf;padding:7px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+.tab:hover{background:rgba(255,255,255,.08);color:#fff}
+.tab.on{background:#fff;color:var(--navy)}
+.tab .count{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--bad);color:#fff;font-size:12px;line-height:18px}
+.tab.on .count{background:var(--bad);}
+.user{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px;color:#e0e0e0}
+.link{background:none;border:0;color:inherit;text-decoration:underline;cursor:pointer;padding:0}
+/* tarjetas */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:16px}
+.grid{display:grid;gap:12px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:14px}
+.kpi{padding:14px 16px}
+.kpi .lbl{font-size:12.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.kpi .val{font-size:30px;font-weight:700;margin-top:2px}
+.kpi .sub{font-size:12.5px;color:var(--muted)}
+.bar{height:8px;background:var(--soft);border-radius:6px;overflow:hidden;margin-top:8px}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:6px}
+.bar.ok>i{background:var(--ok)} .bar.mid>i{background:#8a8a8a} .bar.low>i{background:var(--bad)}
+/* botones */
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600}
+.btn:hover{border-color:#a8a8a8}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#b71c1c}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn.genesys{display:inline-block;text-decoration:none;font-size:15px;padding:11px 22px}
+.btn.disabled{opacity:.5;pointer-events:none}
+/* tablas */
+table{width:100%;border-collapse:collapse}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;color:#fff;text-transform:uppercase;letter-spacing:.3px;background:#1a1a1a;position:sticky;top:0}
+tr.click{cursor:pointer} tr.click:hover td{background:#f6f6f6}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--soft);color:var(--muted);white-space:nowrap}
+.chip.late{background:var(--bad-soft);color:var(--bad)}
+.chip.n1{background:#1a1a1a;color:#fff} .chip.mov{background:#6b6b6b;color:#fff} .chip.oth{background:var(--bad-soft);color:var(--rojo2)}
+.chip.hint{background:var(--hint);color:#2b2b2b;border:1px solid var(--hint-line)}
+.chip.sis{background:var(--bad);color:#fff} .chip.eq{background:#1a1a1a;color:#fff}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.bad{background:var(--bad-soft);color:var(--bad)} .chip.warn{background:var(--warn-soft);color:var(--warn)}
+.ruta{font-weight:600}
+.trunc{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+.empty b{display:block;font-size:18px;color:var(--ok);margin-bottom:4px}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.toolbar .grow{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.seg button{border:0;background:#fff;padding:6px 12px;cursor:pointer;font-weight:600;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--navy);color:#fff}
+/* caso */
+.caso{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,1fr);gap:14px;align-items:start}
+@media (max-width:1000px){.caso{grid-template-columns:1fr}}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px 16px;margin:10px 0 4px}
+.meta div span{display:block;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;font-weight:600}
+.rutabox{background:#f7f7f7;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:10px}
+.rutabox .r{font-size:15.5px;font-weight:700}
+.rutabox .resol{margin-top:4px}
+.pistas{background:var(--hint);border:1px solid var(--hint-line);border-radius:8px;padding:10px 12px;margin-top:10px;white-space:pre-wrap;color:#2b2b2b;font-size:13px}
+.coment{white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:10px;max-height:60vh;overflow:auto;font-size:13.5px}
+details.cierre{margin-top:10px}
+details.cierre summary{cursor:pointer;font-weight:600;color:var(--ink)}
+.form{position:sticky;top:70px}
+.q{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fff}
+.q.falta{border-color:var(--req-line);background:var(--req)}
+.q .t{font-weight:700}
+.q .d{font-size:12.5px;color:var(--muted);margin:2px 0 8px}
+.opts{display:flex;gap:6px}
+.opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 0;cursor:pointer;font-weight:700;color:var(--muted)}
+.opt:hover{border-color:#8a8a8a}
+.opt.on.si{background:var(--ok);border-color:var(--ok);color:#fff}
+.opt.on.no{background:var(--bad);border-color:var(--bad);color:#fff}
+.opt.on.duda{background:var(--gris);border-color:var(--gris);color:#fff}
+.fld{margin-bottom:10px}
+.fld label{display:block;font-weight:700;margin-bottom:4px}
+.fld .req{color:var(--bad);font-weight:700}
+.fld select,.fld input,.fld textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}
+.fld textarea{min-height:64px;resize:vertical}
+.fld.falta select,.fld.falta input,.fld.falta textarea{background:var(--req);border-color:var(--req-line)}
+.res{display:flex;align-items:center;gap:8px;margin:12px 0 6px;flex-wrap:wrap}
+.pill{padding:4px 10px;border-radius:999px;font-weight:700;font-size:13px}
+.pill.BIEN{background:var(--ok);color:#fff} .pill.BIENC{background:var(--ok-soft);color:var(--ok)}
+.pill.MAL{background:var(--bad);color:#fff} .pill.CONS{background:var(--gris);color:#fff} .pill.PEND{background:var(--soft);color:var(--muted)}
+.faltan{color:var(--warn);font-weight:600;font-size:13px;min-height:18px}
+.acciones{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+details.crit{margin-top:12px;font-size:13px}
+details.crit summary{cursor:pointer;font-weight:600;color:var(--ink)}
+details.crit ul{margin:6px 0 0 18px;padding:0}
+details.crit li{margin:3px 0}
+/* panel */
+.pgrid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.cumpl{display:flex;align-items:center;gap:8px;min-width:150px}
+.cumpl .bar{flex:1;margin:0}
+.cumpl b{width:44px;text-align:right;font-variant-numeric:tabular-nums}
+.chart{display:flex;align-items:flex-end;gap:6px;height:120px;padding-top:10px}
+.chart .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.chart .b{width:100%;background:#1a1a1a;border-radius:4px 4px 0 0;min-height:2px}
+.chart .n{font-size:11px;color:var(--muted)}
+.chart .d{font-size:10.5px;color:var(--muted)}
+.lista li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.lista{list-style:none;margin:0;padding:0}
+/* login */
+.login{max-width:420px;margin:8vh auto;padding:24px;border-top:4px solid var(--accent)}
+.login h1{font-size:22px;margin-bottom:4px}
+.login .fld{margin-top:14px}
+.err{color:var(--bad);font-weight:600;min-height:20px;margin-top:10px}
+/* entrada: oscura con rojo, como el dashboard */
+.entrada{position:fixed;inset:0;overflow:auto;z-index:30;display:flex;align-items:center;justify-content:center;padding:24px 16px;
+  background:radial-gradient(1100px 700px at 8% 12%,rgba(165,15,21,.55),transparent 60%),radial-gradient(900px 600px at 92% 95%,rgba(90,0,0,.35),transparent 60%),#0b0b0c}
+.entrada:before{content:"";position:fixed;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:44px 44px}
+.ecard{position:relative;width:100%;max-width:420px;background:rgba(20,20,22,.92);border:1px solid rgba(255,255,255,.09);border-radius:18px;
+  padding:34px 30px 26px;text-align:center;color:#f2f2f2;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.epill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:4px 12px;
+  font-size:10.5px;font-weight:800;letter-spacing:1.4px;color:#e6e6e6}
+.epill i{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.eicono{width:86px;height:86px;margin:20px auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 35% 30%,#ff4a3d,#c8102e 60%,#8f0b12);box-shadow:0 0 0 7px rgba(218,41,28,.13),0 0 0 14px rgba(255,255,255,.03),0 12px 36px rgba(218,41,28,.5)}
+.ecc{font-size:11px;font-weight:800;letter-spacing:2.2px;color:#d9d9d9}
+.ecard h1{font-size:25px;font-weight:800;color:#fff;margin:10px 0 4px;letter-spacing:.2px}
+.esub{font-size:11.5px;font-weight:700;letter-spacing:2px;color:#9a9a9a}
+.elinea{width:46px;height:3px;border-radius:2px;background:var(--accent);margin:16px auto 20px}
+.ebtn{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(180deg,#e8261b,#c8102e);color:#fff;text-decoration:none;
+  font-weight:800;font-size:15px;border-radius:999px;padding:14px 28px;box-shadow:0 10px 28px rgba(218,41,28,.45);cursor:pointer;border:0}
+.ebtn:hover{filter:brightness(1.08)}
+.ebtn.disabled{opacity:.45;pointer-events:none}
+.enota{font-size:12px;color:#9a9a9a;margin-top:12px}
+.ecargando{font-size:13px;color:#bdbdbd;margin:8px 0}
+.entrada .err{color:#ff6b61;font-size:13px}
+.entrada .fld{text-align:left;margin-top:12px}
+.entrada .fld label{color:#cfcfcf;font-size:13px}
+.entrada select,.entrada input{background:#1b1b1e;border:1px solid #38383d;color:#f2f2f2;border-radius:10px}
+.entrada .btn{background:#2a2a2e;border-color:#3a3a40;color:#fff}
+.entrada .btn.primary{background:var(--accent);border-color:var(--accent)}
+.entrada details{color:#a8a8a8;text-align:left}
+.entrada code{color:#e6e6e6}
+.epin{border-top:1px solid rgba(255,255,255,.08);margin-top:22px;padding-top:6px}
+/* carga */
+.drop{border:2px dashed #bdbdbd;border-radius:10px;padding:22px;text-align:center;background:#fafafa}
+.drop.on{border-color:var(--accent);background:var(--accent-soft)}
+.steps{counter-reset:p;list-style:none;margin:0;padding:0}
+.steps li{counter-increment:p;position:relative;padding-left:30px;margin:6px 0}
+.steps li:before{content:counter(p);position:absolute;left:0;top:0;width:20px;height:20px;border-radius:50%;background:var(--navy);color:#fff;font-size:12px;text-align:center;line-height:20px}
+/* aviso */
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);z-index:50;max-width:90vw}
+.toast.bad{background:var(--bad)}
+.loading{display:inline-block;width:16px;height:16px;border:2px solid #cfcfcf;border-top-color:var(--accent);border-radius:50%;animation:g 0.8s linear infinite;vertical-align:-3px}
+@keyframes g{to{transform:rotate(360deg)}}
+.scroll{overflow:auto}
+/* ayudas al pasar el cursor */
+.ayuda{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#dcdcdc;color:#1a1a1a;font-size:11px;font-weight:800;cursor:help;margin-left:5px;vertical-align:1px;text-transform:none;letter-spacing:0}
+th .ayuda{background:#4a4a4a;color:#fff}
+[data-tip]{cursor:help}
+.tipbox{position:fixed;z-index:90;max-width:330px;background:#111;color:#fff;padding:9px 11px;border-radius:8px;font-size:12.5px;line-height:1.45;white-space:pre-line;box-shadow:0 6px 20px rgba(0,0,0,.28);pointer-events:none;border-left:3px solid var(--accent)}
+/* dashboard */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin-bottom:14px}
+.tile{border-radius:10px;padding:14px 16px;color:#fff;min-height:112px}
+.tile.negro{background:#111} .tile.rojo{background:var(--accent)} .tile.gris{background:#3a3a3a} .tile.rojo2{background:var(--rojo2)}
+.tile .lbl{font-size:11.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;opacity:.85}
+.tile .val{font-size:31px;font-weight:800;margin-top:4px;line-height:1.1}
+.tile .sub{font-size:12.5px;opacity:.92;margin-top:2px}
+.pgrid2{grid-template-columns:1fr;margin-bottom:14px}
+tr.total td{font-weight:700;background:#f0f0f0}
+td.rojo{color:var(--accent);font-weight:700}
+.barras .fila{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;margin:10px 0}
+.barras .par{display:flex;flex-direction:column;gap:4px}
+.barras .linea{display:flex;align-items:center;gap:6px}
+.barras .b{height:12px;border-radius:3px;min-width:2px}
+.barras .b.sis{background:var(--accent)} .barras .b.eq{background:#1a1a1a}
+.barras .n{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.leyenda{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:6px}
+.leyenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.estado{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
+.estado.ERROR{background:var(--accent);color:#fff} .estado.NO{background:var(--soft);color:var(--muted)}
+.sisdet{border-left:4px solid var(--accent);margin-bottom:14px}
+.tile .tbar{height:6px;background:rgba(255,255,255,.25);border-radius:4px;margin-top:8px;overflow:hidden}
+.tile .tbar i{display:block;height:100%;background:#fff;border-radius:4px}
+.tile .ayuda{background:rgba(255,255,255,.85);color:#111}
+.meta div span.ayuda{display:inline-flex;color:#1a1a1a}
+.btn.negro{background:#1a1a1a;border-color:#1a1a1a;color:#fff}
+.btn.negro:hover{background:#000}
+.resultado{border-left:4px solid #1a1a1a}
+.txtrojo{color:var(--accent);font-weight:700}
+.aviso{color:var(--accent);margin-top:6px}
+</style>
+</head>
+<body>
+
+<!-- ACCESO -->
+<section id="vLogin" class="entrada">
+  <div class="ecard">
+    <div class="epill"><i></i>AUDITORÍA DE CALIDAD</div>
+    <div class="eicono" aria-hidden="true">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="m8.5 13 2.4 2.4 4.6-4.9"/></svg>
+    </div>
+    <div class="ecc">CENTRO DE CONTACTO</div>
+    <h1>Bandeja de Auditoría</h1>
+    <div class="esub">TIPIFICACIONES QFLOW</div>
+    <div class="elinea"></div>
+    <div id="lCargando" class="ecargando"><span class="loading"></span> <span id="lCargandoTxt">Preparando el acceso…</span></div>
+    <div id="lGenesys" class="hidden">
+      <a id="lGenLink" class="ebtn" href="#" target="_top">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="#ffd27a" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h1Zm2 0h6V7a3 3 0 0 0-6 0v3Z"/></svg>
+        Iniciar sesión con Genesys <span aria-hidden="true">›</span></a>
+      <div class="enota">Con su usuario de Genesys Cloud, el mismo del dashboard.</div>
+    </div>
+    <div id="lPinBox" class="hidden">
+      <div class="epin"><div id="lPinTitulo" class="enota" style="font-weight:700">O con su PIN</div></div>
+      <div class="fld"><label for="lNombre">Su nombre</label><select id="lNombre"></select></div>
+      <div class="fld"><label for="lPin">PIN</label>
+        <input id="lPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="4 dígitos"></div>
+      <div style="margin-top:14px"><button id="lBtn" class="btn">Entrar con PIN</button></div>
+    </div>
+    <div id="lErr" class="err"></div>
+    <details id="lAyuda" class="small hidden" style="margin-top:12px"><summary>Ayuda para el supervisor</summary>
+      <div style="margin-top:6px">Esta dirección tiene que estar autorizada como «redirect URI» en el cliente OAuth de Genesys (el mismo del dashboard):</div>
+      <code id="lRedirect" style="word-break:break-all"></code></details>
+  </div>
+</section>
+
+<!-- APLICACIÓN -->
+<div id="vApp" class="hidden">
+  <header class="top"><div class="wrap">
+    <div class="brand">Bandeja de auditoría <span>· Qflow</span></div>
+    <nav class="tabs">
+      <button class="tab" data-v="bandeja" id="tBandeja">Mi bandeja<span class="count hidden" id="tCount">0</span></button>
+      <button class="tab" data-v="hechas">Mis auditorías</button>
+      <button class="tab" data-v="panel">Dashboard</button>
+      <button class="tab" data-v="sistema">Sistema</button>
+      <button class="tab" data-v="cargar">Cargar sábana</button>
+    </nav>
+    <div class="user"><span id="uNombre"></span><button class="link" id="uSalir">Salir</button></div>
+  </div></header>
+
+  <main class="wrap">
+    <!-- BANDEJA -->
+    <section id="vBandeja">
+      <div class="grid kpis">
+        <div class="card kpi"><div class="lbl">Pendientes<span class="ayuda" data-tip="Casos que le faltan por auditar, de cualquier día. Lo que no termina en el día se acumula como «Atrasado».">?</span></div><div class="val" id="kPend">–</div><div class="sub" id="kPendSub"></div></div>
+        <div class="card kpi"><div class="lbl">Hechas hoy<span class="ayuda" data-tip="Auditorías que guardó hoy contra su meta del día (normalmente 15 casos: 8 de Nivel 1 y 7 de Móvil).">?</span></div><div class="val" id="kHoy">–</div><div class="bar" id="kHoyBar"><i style="width:0"></i></div><div class="sub" id="kHoySub"></div></div>
+        <div class="card kpi"><div class="lbl">Mi cumplimiento del mes<span class="ayuda" data-tip="Auditadas ÷ asignadas de este mes. Llega a 100 % cuando termina todo lo que le asignaron.">?</span></div><div class="val" id="kMes">–</div><div class="bar" id="kMesBar"><i style="width:0"></i></div><div class="sub" id="kMesSub"></div></div>
+      </div>
+      <div class="card">
+        <div class="pad toolbar" style="margin:0;padding-bottom:6px">
+          <h2 class="grow">Casos por auditar</h2>
+          <button class="btn primary" id="bSiguiente">Auditar el siguiente</button>
+          <button class="btn" id="bRecargar">Actualizar</button>
+        </div>
+        <div class="scroll"><table id="tPend"></table></div>
+        <div id="pendVacio" class="empty hidden"><b>Está al día</b>No tiene casos pendientes. Cuando se cargue la sábana del día, sus casos aparecen aquí.</div>
+      </div>
+    </section>
+
+    <!-- CASO -->
+    <section id="vCaso" class="hidden">
+      <div class="toolbar">
+        <button class="btn" id="cVolver">← Volver</button>
+        <div class="grow muted" id="cPos"></div>
+      </div>
+      <div class="caso">
+        <div class="card pad">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <h2 id="cTitulo"></h2><span id="cSkill"></span><span id="cAtraso"></span>
+          </div>
+          <div class="meta" id="cMeta"></div>
+          <div class="rutabox"><div class="small muted">RUTA TIPIFICADA<span class="ayuda" data-tip="AYUDA:ruta">?</span></div><div class="r" id="cRuta"></div>
+            <div class="resol"><span class="small muted">RESOLUCIÓN:<span class="ayuda" data-tip="AYUDA:resolucion">?</span></span> <b id="cRes"></b></div></div>
+          <div class="pistas hidden" id="cPistas"></div>
+          <div class="small muted" style="margin-top:12px;font-weight:600">COMENTARIO DEL ASESOR<span class="ayuda" data-tip="AYUDA:comentario">?</span></div>
+          <div class="coment" id="cCom"></div>
+          <details class="cierre hidden" id="cCierreBox"><summary>Ver cierre del caso (WF)<span class="ayuda" data-tip="AYUDA:cierre">?</span></summary><div class="coment" id="cCierre"></div></details>
+        </div>
+        <div class="card pad form">
+          <h3 style="margin-bottom:10px">Auditoría<span class="ayuda" data-tip="Conteste las 4 preguntas con Sí, No o Duda. Lo obligatorio que falta se marca en rojo y no deja guardar. Pase el cursor por cada «?» para ver qué va en cada campo.">?</span></h3>
+          <div id="qs"></div>
+          <div class="fld" id="fPatron"><label for="iPatron">Patrón de error <span class="req hidden">*</span><span class="ayuda" data-tip="AYUDA:patron">?</span></label><select id="iPatron"></select></div>
+          <div class="fld" id="fRuta"><label for="iRuta">Ruta correcta <span class="req hidden">*</span><span class="ayuda" data-tip="AYUDA:rutaCorrecta">?</span></label>
+            <input id="iRuta" maxlength="400" placeholder="Mercado › Nivel II › Nivel III › Nivel IV › Resolución"></div>
+          <div class="fld" id="fObs"><label for="iObs">Observación <span class="req hidden">*</span><span class="ayuda" data-tip="AYUDA:observacion">?</span></label>
+            <textarea id="iObs" maxlength="1500" placeholder="Qué faltó, qué duda tiene o qué vio"></textarea></div>
+          <div class="res"><span class="small muted">RESULTADO:<span class="ayuda" data-tip="AYUDA:resultado">?</span></span><span class="pill PEND" id="cPill">PENDIENTE</span><span class="small" id="cErr"></span></div>
+          <div class="faltan" id="cFaltan"></div>
+          <div class="acciones">
+            <button class="btn primary" id="cGuardarSig">Guardar y seguir</button>
+            <button class="btn" id="cGuardar">Guardar</button>
+          </div>
+          <details class="crit"><summary>¿Cuándo es «No»? (criterios de Calidad)</summary>
+            <ul>
+              <li><b>P1 Ruta.</b> No: consulta de factura en «Visita técnica › Cliente reporta servicio OK»; llamada no efectiva cuando el comentario dice el motivo (frases genéricas como «ingresa al canal de ventas para una consulta» no cuentan); suspendido por pago en ruta técnica o en «Fecha límite de pago»; solo TV en ruta de Internet o al revés (si habla de los dos, cualquiera sirve); «Número favorito» para otra cosa; línea activa en «Status desconectado»; cliente en el extranjero fuera de Roaming; falla de zona fuera de «Avería colectiva».</li>
+              <li><b>No es error:</b> rutas «solo tienda» (Cambio de SIM, eSIM, Desbloqueo IMEI…) si el tema coincide.</li>
+              <li><b>P2 Resolución.</b> No: «Apagar/Encender» y se hizo reset VLR, desbloqueo o mantenimiento; «Cliente reporta servicio OK» con pruebas o reinicio; «Se generó avería» sin número; bloqueo hecho y tipificado como consulta.</li>
+              <li><b>P3 Cierre.</b> Unidad = resuelto en la llamada; WF = escalado. No: dice que escaló, quedó en Unidad y no hay un WF anterior del mismo teléfono o contrato. Si hay un caso anterior que no es WF, marquen Duda.</li>
+              <li><b>P4 Comentario.</b> No: plantilla vacía, «Avería colectiva» sin contrato, nodo ni ticket, o dice que generó avería sin el número. No cambia el resultado de la tipificación.</li>
+              <li><b>Duda:</b> el caso queda «Consultar a Calidad» y no cuenta en el % de error hasta que se decida.</li>
+            </ul>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- MIS AUDITORÍAS -->
+    <section id="vHechas" class="hidden">
+      <div class="card">
+        <div class="pad toolbar" style="margin:0;padding-bottom:6px"><h2 class="grow">Mis auditorías recientes</h2>
+          <span class="muted small">Pueden abrir una para corregirla.</span></div>
+        <div class="scroll"><table id="tHechas"></table></div>
+        <div id="hechasVacio" class="empty hidden">Todavía no tiene auditorías guardadas.</div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section id="vPanel" class="hidden">
+      <div class="toolbar">
+        <h2 class="grow">Dashboard de calidad</h2>
+        <div class="seg" id="pPeriodo">
+          <button data-p="hoy">Hoy</button><button data-p="semana">Esta semana</button><button data-p="mes" class="on">Este mes</button><button data-p="todo">Todo</button>
+        </div>
+      </div>
+      <div class="tiles" id="pTiles"></div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="pad" style="padding-bottom:6px"><h3>Por skill<span class="ayuda" data-tip="El sistema revisa todos los casos de las sábanas y marca los errores claros. El equipo audita una muestra de lo que queda. El % de error estimado junta las dos cosas.">?</span></h3></div>
+        <div class="scroll"><table id="tSkills"></table></div>
+      </div>
+      <div class="grid pgrid" style="margin-bottom:14px">
+        <div class="card pad"><h3>Errores del sistema por regla<span class="ayuda" data-tip="Cuántos errores encontró cada regla automática. «Descartados» son los que el supervisor marcó «No es error» en la pestaña Sistema: no cuentan.">?</span></h3>
+          <div class="scroll" style="margin-top:8px"><table id="tReglas"></table></div></div>
+        <div class="card pad"><h3>Errores por skill: sistema y equipo</h3><div class="barras" id="pBarras"></div>
+          <div class="leyenda"><span><i style="background:var(--accent)"></i>Sistema</span><span><i style="background:#1a1a1a"></i>Equipo (mal tipificados)</span></div></div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="pad" style="padding-bottom:4px"><h3>Cumplimiento por auditor</h3>
+          <div class="small muted" id="pDef"></div></div>
+        <div class="scroll"><table id="tPanel"></table></div>
+      </div>
+      <div class="grid pgrid">
+        <div class="card pad"><h3>Auditorías por día (últimos 14 días)</h3><div class="chart" id="pChart"></div></div>
+        <div class="card pad"><h3>Errores más frecuentes<span class="ayuda" data-tip="Patrones de error que encontró el equipo y reglas del sistema, juntos.">?</span></h3><ul class="lista" id="pPat"></ul></div>
+        <div class="card pad"><h3>Asesores con más errores<span class="ayuda" data-tip="Errores del sistema + casos mal tipificados por el equipo, por asesor.">?</span></h3><ul class="lista" id="pAse"></ul></div>
+      </div>
+    </section>
+
+    <!-- SISTEMA -->
+    <section id="vSistema" class="hidden">
+      <div class="toolbar">
+        <h2 class="grow">Revisión automática del sistema</h2>
+        <div class="seg" id="sPeriodo">
+          <button data-p="hoy">Hoy</button><button data-p="semana">Esta semana</button><button data-p="mes" class="on">Este mes</button><button data-p="todo">Todo</button>
+        </div>
+      </div>
+      <div class="card pad" style="margin-bottom:12px">
+        <div class="small">Antes de asignar, el sistema revisa <b>todos</b> los casos de la sábana y marca como error los que rompen una regla.
+          Esos casos ya quedan auditados y no se asignan a nadie.</div>
+        <ul class="small" style="margin:6px 0 0 18px;padding:0">
+          <li><b>Tecnología contradictoria:</b> el comentario dice una tecnología (DTH, HFC, GPON, IPTV, WTTH, IFI) y la ruta es de otra. Ej.: «tv DTH» con ruta TV HFC.</li>
+          <li><b>Abandono o corte con motivo escrito:</b> tipificó «Cliente Corto» o «Cliente abandona interacción», pero el comentario dice por qué llamó el cliente.</li>
+        </ul>
+        <div class="small muted" style="margin-top:6px" id="sNota">Si el sistema se equivoca, el supervisor abre el caso y marca «No es error», con el motivo: así dejamos de contarlo y afinamos las reglas.</div>
+      </div>
+      <div class="card pad sisdet hidden" id="sDetalle"></div>
+      <div class="card">
+        <div class="scroll"><table id="tSistema"></table></div>
+        <div id="sistemaVacio" class="empty hidden">El sistema no ha marcado errores en este período.</div>
+      </div>
+    </section>
+
+    <!-- CARGAR -->
+    <section id="vCargar" class="hidden">
+      <div class="grid" style="grid-template-columns:minmax(0,1.3fr) minmax(280px,1fr)">
+        <div class="card pad">
+          <h2>Cargar la sábana del día anterior</h2>
+          <ol class="steps" style="margin-top:10px">
+            <li>Elijan el archivo de la sábana (.xlsx o .csv, con encabezados). Puede ser la del día o la del mes acumulado.</li>
+            <li>Revisen las fechas: se marca sola la más reciente que no se ha cargado.</li>
+            <li>Toquen «Asignar casos». Primero el sistema revisa todos los casos y deja los errores claros en la pestaña Sistema; después a cada auditor le tocan sus casos del día. Si una fecha ya se cargó, no se repite.</li>
+          </ol>
+          <label class="drop" id="dZona" style="display:block;margin-top:12px;cursor:pointer">
+            <input id="dArchivo" type="file" accept=".xlsx,.xls,.csv" class="hidden">
+            <b>Elegir archivo</b><div class="small muted">o arrástrenlo aquí</div>
+          </label>
+          <div id="dEstado" class="small" style="margin-top:10px"></div>
+          <div id="dFechas" class="hidden" style="margin-top:12px">
+            <table id="tFechas"></table>
+            <div id="dPlan" class="small muted" style="margin-top:8px"></div>
+            <div class="acciones"><button class="btn primary" id="dAsignar" disabled>Asignar casos</button></div>
+          </div>
+          <div id="dResultado" style="margin-top:12px"></div>
+        </div>
+        <div class="card pad">
+          <h3>Casos por día de cada auditor</h3>
+          <div class="small muted">Se cambia en la pestaña AUDITORES de la hoja de Google.</div>
+          <div class="scroll" style="margin-top:8px"><table id="tCuotas"></table></div>
+          <h3 style="margin-top:16px">Últimas cargas</h3>
+          <div class="scroll" style="margin-top:6px"><table id="tCargas"></table></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<div id="tip" class="tipbox hidden"></div>
+
+<script type="application/json" id="inicialJson"><?!= inicial ?></script>
+<script>
+/* ============================== dónde corre la página ============================== */
+/* La página puede abrirse de dos formas:
+ *  · publicada en GitHub Pages (como el dashboard): habla con la hoja por la dirección de Apps Script (API_URL)
+ *    y la entrada con Genesys se hace aquí mismo (PKCE);
+ *  · como aplicación web de Apps Script (/exec): usa google.script.run, como antes. */
+var API_URL = 'https://script.google.com/macros/s/AKfycbw25A-O4OdkwFhWT2C9JweTdGmGAfPYRjP95eGp2RaoIXfUeiz1Z8bkLnp4TM8xb0H3QQ/exec';
+var EN_APPS_SCRIPT = !!(window.google && google.script && google.script.run);
+var INICIAL = (function () {
+  try { var el = document.getElementById('inicialJson'); return el ? JSON.parse(el.textContent) : null; } catch (e) { return null; }
+})();
+
+/* ============================== estado y utilidades ============================== */
+var S = { user: null, ses: '', bandeja: [], kpi: null, hoy: '', vista: 'bandeja', caso: null, origen: 'bandeja',
+          hechas: [], periodo: 'mes', periodoSis: 'mes', sis: null, revisando: false, cargas: null, archivo: null, guardando: false };
+var RESP = ['Sí', 'No', 'Duda'];
+var PREG = [
+  ['p1', 'P1 · ¿La ruta es el motivo real del cliente?', 'Mercado › Nivel II › III › IV: lo que pidió o reportó, en el servicio correcto.'],
+  ['p2', 'P2 · ¿La resolución es lo que hizo el asesor?', 'Lo que dice la resolución tiene que estar escrito en el comentario.'],
+  ['p3', 'P3 · ¿El cierre es correcto?', 'Unidad = resuelto en la llamada · WF = escalado a nivel 2 o 3.'],
+  ['p4', 'P4 · ¿El comentario está completo?', 'Se entiende el motivo, qué se hizo y cómo terminó (con número de avería u orden si aplica).']
+];
+function $(id) { return document.getElementById(id); }
+function h(tag, props) {
+  var e = document.createElement(tag);
+  if (props) Object.keys(props).forEach(function (k) {
+    var v = props[k];
+    if (v == null) return;
+    if (k === 'text') e.textContent = v;
+    else if (k === 'cls') e.className = v;
+    else if (k === 'on') Object.keys(v).forEach(function (ev) { e.addEventListener(ev, v[ev]); });
+    else if (k === 'style') e.setAttribute('style', v);
+    else e.setAttribute(k, v);
+  });
+  for (var i = 2; i < arguments.length; i++) {
+    var c = arguments[i];
+    if (c == null || c === false) continue;
+    if (Array.isArray(c)) c.forEach(function (x) { if (x != null && x !== false) e.appendChild(typeof x === 'string' || typeof x === 'number' ? document.createTextNode(String(x)) : x); });
+    else e.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
+  }
+  return e;
+}
+function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); return el; }
+function pct(x) { return x == null ? '–' : Math.round(x * 100) + '%'; }
+function nrm(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function p2(n) { n = Math.floor(Number(n) || 0); return (n < 10 ? '0' : '') + n; }
+function fechaCorta(s) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}:\d{2}))?/.exec(s || '');
+  if (!m) return s || '';
+  var mes = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][+m[2] - 1];
+  return (+m[3]) + ' ' + mes + (m[4] ? ' ' + m[4] : '');
+}
+function toast(msg, mal) {
+  var t = $('toast'); t.textContent = msg; t.className = 'toast' + (mal ? ' bad' : '');
+  clearTimeout(toast._t); toast._t = setTimeout(function () { t.className = 'toast hidden'; }, mal ? 6500 : 3200);
+}
+function api(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  if (!EN_APPS_SCRIPT) return apiWeb(fn, args);
+  return new Promise(function (ok, ko) {
+    var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) {
+      var err = e && e.message ? e : new Error(String(e));
+      if (esSesion(err) && S.user) salir(errMsg(err));
+      ko(err);
+    });
+    r[fn].apply(r, args);
+  });
+}
+/* Desde GitHub Pages: POST de texto (sin pedir permiso previo al navegador) a la aplicación de Apps Script. */
+function apiWeb(fn, args) {
+  return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: args }) })
+    .then(function (r) {
+      if (!r.ok) throw new Error('La hoja de Google respondió con un error (HTTP ' + r.status + ').');
+      return r.json().catch(function () { throw new Error('La hoja de Google no respondió bien. Revisen que la aplicación esté publicada con acceso «Cualquiera».'); });
+    }, function () { throw new Error('No hay conexión con la hoja de Google. Revisen el internet e intenten de nuevo.'); })
+    .then(function (x) {
+      if (x && x.ok) return x.r;
+      var err = new Error((x && x.error) || 'Error desconocido.');
+      if (esSesion(err) && S.user) salir(errMsg(err));
+      throw err;
+    });
+}
+function errMsg(e) { return String((e && e.message) || e).replace(/^Error:\s*/, '').replace(/^Exception:\s*/, '').replace(/^SESION:\s*/, ''); }
+function chipSkill(s) {
+  var n = nrm(s), cls = n.indexOf('movil') >= 0 ? 'mov' : n.indexOf('nivel 1') >= 0 ? 'n1' : 'oth';
+  var txt = n.indexOf('movil') >= 0 ? 'Móvil' : n.indexOf('nivel 1') >= 0 ? 'Nivel 1' : s;
+  return h('span', { cls: 'chip ' + cls, text: txt });
+}
+function barCls(x) { return x == null ? '' : x >= 0.95 ? 'ok' : x >= 0.8 ? 'mid' : 'low'; }
+function setBar(el, x) { el.className = 'bar ' + barCls(x); el.firstElementChild.style.width = Math.max(0, Math.min(100, Math.round((x || 0) * 100))) + '%'; }
+/* porcentaje con un decimal (para los % de error, que suelen ser chicos) */
+function pct1(x) { if (x == null) return '–'; var v = Math.round(x * 1000) / 10; return (v % 1 ? v.toFixed(1) : String(v)) + '%'; }
+function miles(n) { return Number(n || 0).toLocaleString('es-HN'); }
+/* encabezado de tabla con su explicación al pasar el cursor (textos en AYUDA) */
+function th(txt, tip, cls) {
+  return h('th', { cls: cls || null, 'data-tip': tip ? 'AYUDA:' + tip : null }, txt, tip ? h('span', { cls: 'ayuda', text: '?' }) : null);
+}
+function metaItem(lbl, val, tip) {
+  return h('div', null, h('span', { 'data-tip': tip ? 'AYUDA:' + tip : null }, lbl, tip ? h('span', { cls: 'ayuda', text: '?' }) : null), val || '—');
+}
+function rutaDe(r) { return [r.mercado, r.n2, r.n3, r.n4].filter(function (x) { return x; }).join(' › '); }
+
+/* ============================== ayudas (al pasar el cursor) ============================== */
+/* Qué es cada columna o campo, qué hay que llenar y por qué. Se usan con data-tip="AYUDA:clave". */
+var AYUDA = {
+  // bandeja y caso
+  asignado: 'Día en que se le asignó el caso.\nSi ya pasó y no lo ha auditado, sale «Atrasado» y sigue en su bandeja hasta que lo termine.',
+  skill: 'Cola por donde entró el cliente: Nivel 1 Multimedia o Call Center Móvil.\nCada auditor recibe 8 de Nivel 1 y 7 de Móvil por día.',
+  caso: 'Número del caso en Qflow, por si necesita buscarlo. Debajo dice de qué sábana salió.',
+  asesor: 'Quien tipificó el caso (el gestor que lo ingresó). Si está mal tipificado, el error se le cuenta a esta persona.',
+  ruta: 'Lo que eligió el asesor: Mercado › Nivel II › Nivel III › Nivel IV.\nEn P1 usted revisa si esa ruta es el motivo real del cliente.',
+  pistas: 'Avisos automáticos que buscan palabras en el comentario.\nSolo ayudan a mirar: no califican. Usted decide.',
+  fechaCaso: 'Fecha y hora en que se registró el caso.',
+  tipo: 'Unidad = se resolvió en la llamada.\nWF = se escaló a nivel 2 o 3.\nSe revisa en P3.',
+  canal: 'Servicio inicial: por dónde entró el cliente.',
+  tema: 'Tema del caso según la sábana.',
+  telefono: 'Teléfono con falla. Por seguridad solo se ven los últimos 4 números.',
+  sabana: 'Fecha de la sábana de donde salió el caso (normalmente, la del día anterior).',
+  resolucion: 'Lo que el asesor dice que hizo.\nEn P2 revise que el comentario lo respalde.',
+  comentario: 'Lo que escribió el asesor: el motivo real, lo que hizo y cómo terminó.\nLos datos personales vienen tapados: [nombre], [número], [correo], [dirección].',
+  cierre: 'Lo que escribió el área que recibió el escalamiento (WF). Ayuda a decidir P3.',
+  p1: '¿La ruta es el motivo real del cliente?\nSí: la ruta dice lo que el cliente pidió o reportó, en el servicio correcto.\nNo: es de otro motivo o de otro servicio. Se piden el Patrón de error y la Ruta correcta.\nDuda: no está seguro. Se pide una Observación y el caso queda para consultar a Calidad.',
+  p2: '¿La resolución es lo que hizo el asesor?\nSí: lo que dice la resolución está en el comentario.\nNo: dice algo que no se hizo, o se hizo otra cosa. Se piden el Patrón de error y la Ruta correcta.\nDuda: se pide una Observación.',
+  p3: '¿El cierre es correcto?\nUnidad = resuelto en la llamada. WF = escalado.\nNo: por ejemplo, dice que escaló y quedó en Unidad. Se pide el Patrón de error.\nDuda: se pide una Observación.',
+  p4: '¿El comentario está completo?\nSí: se entiende el motivo, qué se hizo y cómo terminó (con el número de avería u orden, si aplica).\nNo: falta algo de eso. No cambia la tipificación: el resultado queda «Bien, comentario incompleto».',
+  patron: 'Qué tipo de error encontró. Se elige de la lista.\nEs obligatorio si contestó «No» en P1, P2 o P3.\nCon esto el Dashboard muestra los errores más frecuentes para la retroalimentación.',
+  rutaCorrecta: 'La ruta que debió usar el asesor: Mercado › Nivel II › Nivel III › Nivel IV › Resolución.\nEs obligatoria si P1 o P2 es «No». Sirve para corregir al asesor.',
+  observacion: 'Explique en pocas palabras lo que vio.\nEs obligatoria si marcó alguna «Duda» o si el patrón es «Otro», para que Calidad entienda el caso sin leerlo todo de nuevo.',
+  resultado: 'Se calcula solo con las respuestas:\n• Algún «No» en P1, P2 o P3 = MAL TIPIFICADO.\n• Alguna «Duda» = CONSULTAR A CALIDAD (no cuenta en el % de error).\n• Solo P4 en «No» = BIEN, COMENTARIO INCOMPLETO.\n• Todo «Sí» = BIEN.',
+  auditado: 'Fecha en que guardó la auditoría. Toque la fila para abrirla y corregirla.',
+  patronRuta: 'El patrón de error y la ruta correcta que usted escribió.',
+  // dashboard: indicadores
+  tCasos: 'Todos los casos de Nivel 1 Multimedia y Call Center Móvil de las sábanas cargadas en el período.\nEl sistema los revisa todos antes de asignar.',
+  tErrSis: 'Casos que las reglas automáticas marcaron con error.\nQuedan en la pestaña Sistema y no se asignan al equipo.\nNo cuenta los que el supervisor marcó «No es error».',
+  tAuditadas: 'Casos que el equipo ya auditó, de los que se asignaron en el período.',
+  tCumpl: 'Auditadas ÷ asignadas del período. La meta es 100 %.',
+  tMal: 'Casos que el equipo calificó MAL TIPIFICADO, y su % sobre lo decidido (bien + mal).\n«Consultar a Calidad» no cuenta.',
+  tEstimado: '% de error de todos los casos, juntando las dos revisiones:\n(errores del sistema + % de error del equipo × casos que el sistema no marcó) ÷ casos de la sábana.',
+  // dashboard: por skill
+  dSkill: 'Cola de la sábana.',
+  dCasos: 'Casos de este skill en las sábanas cargadas en el período. El sistema los revisó todos.',
+  dErrSis: 'Casos que el sistema marcó con error. No se asignan al equipo.\nNo cuenta los que el supervisor marcó «No es error».',
+  dPctSis: 'Errores del sistema ÷ casos de la sábana.',
+  dAsignadas: 'Casos que se le asignaron al equipo para auditar en el período.',
+  dAuditadas: 'De los asignados, cuántos ya auditó el equipo.',
+  dCumpl: 'Auditadas ÷ asignadas. Llega a 100 % cuando el equipo termina todo lo asignado.',
+  dMal: 'Casos que el equipo calificó MAL TIPIFICADO.',
+  dErrEq: '% de error en lo que auditó el equipo: mal tipificados ÷ (bien + mal).\n«Consultar a Calidad» no cuenta.',
+  dEstimado: '% de error estimado de todo el skill:\n(errores del sistema + % de error del equipo × casos que el sistema no marcó) ÷ casos de la sábana.',
+  // dashboard: reglas y auditores
+  rRegla: 'Regla automática que encontró el error. Pase el cursor por el nombre para ver qué revisa.',
+  rErrores: 'Casos que esta regla marcó con error y siguen contando.',
+  rDescartados: 'Casos que el supervisor marcó «No es error». Ya no cuentan, y con ellos se afina la regla.',
+  rPct: 'Parte de los errores del sistema que encontró esta regla.',
+  aAuditor: 'Persona del equipo de auditoría.',
+  aAsignadas: 'Casos que se le asignaron en el período.',
+  aAuditadas: 'De esos casos, cuántos ya auditó.',
+  aCumpl: 'Auditadas ÷ asignadas del período.',
+  aHoy: 'Auditorías que guardó hoy / casos que le tocan hoy.',
+  aPend: 'Casos que le faltan, de cualquier fecha.',
+  aAtras: 'Casos pendientes de días anteriores.',
+  // sistema
+  sFecha: 'Fecha de la sábana del caso.',
+  sCaso: 'Número del caso en Qflow.',
+  sRegla: 'Regla automática que encontró el error.',
+  sPorque: 'Qué leyó el sistema en el comentario y por qué no cuadra con la ruta.',
+  sEstado: 'ERROR: cuenta como error del asesor.\nNO ES ERROR: el supervisor lo descartó y ya no cuenta.\nToque la fila para ver el caso completo.',
+  sObs: '«No es error» pide escribir por qué: el caso deja de contar y con eso se afina la regla.\n«Error confirmado» deja constancia de que el supervisor lo revisó.',
+  // cargar sábana
+  cAuditor: 'Auditores activos que reciben casos. Se cambian en la pestaña AUDITORES de la hoja de Google.',
+  cSkillCuota: 'Casos de este skill que recibe cada día.',
+  cTotal: 'Casos por día en total.',
+  cSabana: 'Fecha de la sábana cargada.',
+  cCargada: 'Cuándo se cargó y quién la cargó.',
+  cCasos: 'Casos de esa fecha que se asignaron al equipo.',
+  fFecha: 'Fecha que trae la sábana. Se marca sola la más reciente que no se ha cargado.',
+  fSkill: 'Casos de este skill en esa fecha. El sistema los revisa todos antes de asignar.',
+  fEstado: 'Nueva: todavía no se ha asignado.\nYa cargada: no se vuelve a asignar (solo el supervisor puede repetirla).'
+};
+var EXPLICA_REGLA = {
+  'Tecnología contradictoria': 'El comentario dice una tecnología (DTH, HFC, GPON, IPTV, WTTH, IFI) y la ruta (Nivel III) es de otra.\nCompatibles: IPTV con GPON y con HFC; WTTH con IFI.',
+  'Abandono o corte con motivo escrito': 'Tipificó «Cliente Corto» o «Cliente abandona interacción», pero el comentario dice por qué llamó el cliente.\nSi el asesor supo el motivo, debió usar la ruta de ese motivo.'
+};
+function textoAyuda(t) { t = String(t || ''); return t.indexOf('AYUDA:') === 0 ? (AYUDA[t.slice(6)] || '') : t; }
+function mostrarAyuda(el) {
+  var tip = $('tip'), txt = textoAyuda(el.getAttribute('data-tip'));
+  if (!txt) { tip.classList.add('hidden'); return; }
+  tip.textContent = txt; tip.classList.remove('hidden');
+  var r = el.getBoundingClientRect(), w = tip.offsetWidth, alto = tip.offsetHeight;
+  var x = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+  var y = r.bottom + 6;
+  if (y + alto > window.innerHeight - 8) y = Math.max(8, r.top - alto - 6);
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+function ocultarAyuda() { $('tip').classList.add('hidden'); }
+
+/* ============================== acceso ============================== */
+var SES_KEY = 'bandejaQflow.sesion';
+var refrescoGenesys = null;
+function guardarSesion(v) { try { localStorage.setItem(SES_KEY, v); } catch (e) { /* sin almacenamiento */ } }
+function leerSesionGuardada() { try { return localStorage.getItem(SES_KEY) || ''; } catch (e) { return ''; } }
+function borrarSesion() { try { localStorage.removeItem(SES_KEY); } catch (e) { } }
+function esSesion(e) { return /^SESION:/.test(String((e && e.message) || e).replace(/^(Error|Exception):\s*/, '')); }
+function limpiarUrl() {   // quita ?code=…&state=… de la dirección después de entrar con Genesys
+  try {
+    if (EN_APPS_SCRIPT) { if (google.script.history) google.script.history.replace(null, {}, ''); }
+    else history.replaceState(null, '', location.pathname);
+  } catch (e) { }
+}
+var PKCE_KEY = 'bandejaQflow.pkce';
+function paginaUrl() { return location.origin + location.pathname; }
+function guardarPkce(v) { var t = JSON.stringify(v); try { sessionStorage.setItem(PKCE_KEY, t); } catch (e) { try { localStorage.setItem(PKCE_KEY, t); } catch (e2) { } } }
+function leerPkce() {
+  var t = '';
+  try { t = sessionStorage.getItem(PKCE_KEY) || ''; sessionStorage.removeItem(PKCE_KEY); } catch (e) { }
+  try { if (!t) t = localStorage.getItem(PKCE_KEY) || ''; localStorage.removeItem(PKCE_KEY); } catch (e) { }
+  try { return t ? JSON.parse(t) : null; } catch (e) { return null; }
+}
+/** Arma el enlace de Genesys con PKCE (S256) y va a la pantalla de Genesys; Genesys regresa aquí con ?code. */
+function irAGenesys(cli) {
+  var al = function (n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return a64url(a); };
+  var verifier = al(48), state = al(16);
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)).then(function (d) {
+    guardarPkce({ v: verifier, s: state, t: Date.now() });
+    var q = new URLSearchParams({ response_type: 'code', client_id: cli.clientId, redirect_uri: paginaUrl(),
+      code_challenge: a64url(d), code_challenge_method: 'S256', state: state });
+    location.href = 'https://login.' + cli.region + '/oauth/authorize?' + q.toString();
+  }).catch(function () { $('lErr').textContent = 'Este navegador no permite entrar con Genesys. Usen Chrome o Edge actualizados.'; });
+}
+/** Genesys regresó con ?code=…&state=… (o con ?error=…): se canjea en la hoja y se abre la sesión. */
+function volverDeGenesys(q) {
+  limpiarUrl();
+  var p = leerPkce();
+  if (q.get('error')) { mostrarLogin('Genesys no dio acceso: ' + (q.get('error_description') || q.get('error'))); return; }
+  if (!p || p.s !== q.get('state') || Date.now() - p.t > 20 * 60 * 1000) {
+    mostrarLogin('El acceso con Genesys venció o ya se usó. Toquen «Iniciar sesión con Genesys» otra vez.');
+    return;
+  }
+  $('vApp').classList.add('hidden'); $('vLogin').classList.remove('hidden');
+  $('lGenesys').classList.add('hidden'); $('lPinBox').classList.add('hidden'); $('lErr').textContent = '';
+  $('lCargandoTxt').textContent = 'Entrando con Genesys…'; $('lCargando').classList.remove('hidden');
+  api('api_loginGenesys', q.get('code'), p.v, paginaUrl())
+    .then(function (r) { guardarSesion(r.sesion); abrirApp(r.sesion, r.perfil); })
+    .catch(function (e) { mostrarLogin(errMsg(e)); });
+}
+
+function iniciar() {
+  if (!EN_APPS_SCRIPT) {
+    var q = new URLSearchParams(location.search);
+    if (q.get('code') || q.get('error')) { volverDeGenesys(q); return; }
+  }
+  var ini = (typeof INICIAL === 'object' && INICIAL) ? INICIAL : null;
+  if (ini) limpiarUrl();
+  if (ini && ini.sesion) { guardarSesion(ini.sesion); abrirApp(ini.sesion, ini.perfil); return; }
+  var guardada = leerSesionGuardada();
+  if (guardada) {
+    api('api_perfil', guardada).then(function (u) { abrirApp(guardada, u); }).catch(function (e) {
+      borrarSesion();
+      mostrarLogin(ini && ini.error ? ini.error : (esSesion(e) ? errMsg(e) : 'No se pudo abrir la sesión: ' + errMsg(e)));
+    });
+    return;
+  }
+  mostrarLogin(ini && ini.error);
+}
+function mostrarLogin(msg) {
+  $('vApp').classList.add('hidden'); $('vLogin').classList.remove('hidden');
+  $('lErr').textContent = msg || '';
+  $('lCargandoTxt').textContent = 'Preparando el acceso…';
+  $('lCargando').classList.remove('hidden');
+  api('api_inicio').then(function (r) {
+    $('lCargando').classList.add('hidden');
+    var conGenesys = r.acceso !== 'PIN', conPin = r.acceso !== 'GENESYS';
+    $('lGenesys').classList.toggle('hidden', !conGenesys);
+    if (conGenesys && !EN_APPS_SCRIPT && r.genesysCliente && r.genesysCliente.clientId) {
+      $('lGenLink').href = '#'; $('lGenLink').classList.remove('disabled');
+      $('lGenLink').onclick = function (ev) { ev.preventDefault(); irAGenesys(r.genesysCliente); };
+      $('lRedirect').textContent = paginaUrl(); $('lAyuda').classList.remove('hidden');
+    } else if (conGenesys && EN_APPS_SCRIPT && r.genesys) {
+      $('lGenLink').href = r.genesys.url; $('lGenLink').classList.remove('disabled'); $('lGenLink').onclick = null;
+      $('lRedirect').textContent = r.genesys.redirect; $('lAyuda').classList.remove('hidden');
+    } else if (conGenesys) {
+      $('lGenLink').removeAttribute('href'); $('lGenLink').classList.add('disabled');
+      $('lErr').textContent = (msg ? msg + ' ' : '') + (r.genesysError || 'No se pudo preparar el acceso con Genesys.');
+    }
+    $('lPinBox').classList.toggle('hidden', !conPin);
+    $('lPinTitulo').classList.toggle('hidden', !conGenesys);
+    $('lBtn').className = conGenesys ? 'btn' : 'btn primary';
+    if (conPin) {   // si ya eligió su nombre mientras se cargaba la lista, se respeta
+      var sel = $('lNombre'), antes = sel.value;
+      clear(sel);
+      sel.appendChild(h('option', { value: '', text: 'Elija su nombre' }));
+      (r.auditores || []).forEach(function (n) { sel.appendChild(h('option', { value: n, text: n })); });
+      if (antes && (r.auditores || []).indexOf(antes) >= 0) sel.value = antes;
+    }
+    clearTimeout(refrescoGenesys);   // el enlace de Genesys vale 20 minutos: se renueva a los 15
+    if (conGenesys) refrescoGenesys = setTimeout(function () { if (!S.user) mostrarLogin($('lErr').textContent); }, 15 * 60 * 1000);
+  }).catch(function (e) { $('lCargando').classList.add('hidden'); $('lErr').textContent = errMsg(e); });
+}
+function entrarPin() {
+  var nombre = $('lNombre').value, pin = $('lPin').value.trim();
+  if (!nombre || !pin) { $('lErr').textContent = 'Elija su nombre y escriba su PIN.'; return; }
+  $('lBtn').disabled = true; $('lErr').textContent = '';
+  api('api_loginPin', nombre, pin).then(function (r) { guardarSesion(r.sesion); abrirApp(r.sesion, r.perfil); })
+    .catch(function (e) { $('lErr').textContent = errMsg(e); })
+    .then(function () { $('lBtn').disabled = false; });
+}
+function abrirApp(ses, u) {
+  clearTimeout(refrescoGenesys);
+  S.ses = ses; S.user = u; S.hoy = u.hoy;
+  $('vLogin').classList.add('hidden'); $('vApp').classList.remove('hidden');
+  $('uNombre').textContent = u.nombre + (u.rol === 'SUPERVISOR' && !/supervisor/i.test(u.nombre) ? ' · supervisor' : '');
+  var sinCasos = u.rol === 'SUPERVISOR' && !u.meta;
+  document.querySelectorAll('.tab[data-v=bandeja], .tab[data-v=hechas]').forEach(function (t) { t.classList.toggle('hidden', sinCasos); });
+  llenarPatrones();
+  ir(sinCasos ? 'panel' : 'bandeja');
+}
+function salir(msg) {
+  borrarSesion(); S.ses = ''; S.user = null; S.kpi = null; S.bandeja = []; S.hechas = []; S.archivo = null; S.cargas = null; S.sis = null;
+  clear($('sDetalle')).classList.add('hidden'); ocultarAyuda();
+  $('tCount').classList.add('hidden'); clear($('dResultado')); $('dFechas').classList.add('hidden'); $('dEstado').textContent = '';
+  $('lPin').value = '';
+  mostrarLogin(typeof msg === 'string' ? msg : '');
+}
+
+/* ============================== navegación ============================== */
+function ir(v) {
+  S.vista = v;
+  ['bandeja', 'caso', 'hechas', 'panel', 'sistema', 'cargar'].forEach(function (x) {
+    $('v' + x.charAt(0).toUpperCase() + x.slice(1)).classList.toggle('hidden', x !== v);
+  });
+  document.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('on', t.dataset.v === v || (v === 'caso' && t.dataset.v === S.origen)); });
+  window.scrollTo(0, 0);
+  if (v === 'bandeja') cargarBandeja();
+  if (v === 'hechas') cargarHechas();
+  if (v === 'panel') cargarPanel();
+  if (v === 'sistema') cargarSistema();
+  if (v === 'cargar') cargarEstado();
+  ocultarAyuda();
+}
+
+/* ============================== bandeja ============================== */
+function cargarBandeja() {
+  setCargando($('tPend'), 7);
+  return api('api_bandeja', S.ses).then(aplicarBandeja).catch(function (e) { toast(errMsg(e), true); });
+}
+function aplicarBandeja(r) {
+  S.bandeja = r.pendientes; S.kpi = r.kpi; S.hoy = r.hoy;
+  pintarKpis(); if (S.vista === 'bandeja') pintarPendientes();
+}
+function pintarKpis() {
+  var k = S.kpi; if (!k) return;
+  $('kPend').textContent = k.pendientes;
+  $('kPendSub').textContent = k.atrasadas ? k.atrasadas + ' atrasados de días anteriores' : 'Ninguno atrasado';
+  $('kPendSub').style.color = k.atrasadas ? 'var(--bad)' : '';
+  $('kHoy').textContent = k.hechasHoy + (k.meta ? ' / ' + Math.max(k.meta, k.asignadasHoy) : '');
+  var meta = Math.max(k.meta || 0, k.asignadasHoy || 0);
+  setBar($('kHoyBar'), meta ? k.hechasHoy / meta : null);
+  $('kHoySub').textContent = k.asignadasHoy ? 'Hoy le asignaron ' + k.asignadasHoy + ' casos' : 'Hoy todavía no se ha cargado la sábana';
+  $('kMes').textContent = pct(k.cumplimientoMes);
+  setBar($('kMesBar'), k.cumplimientoMes);
+  $('kMesSub').textContent = k.auditadasMes + ' de ' + k.asignadasMes + ' casos asignados este mes';
+  var c = $('tCount'); c.textContent = k.pendientes; c.classList.toggle('hidden', !k.pendientes);
+}
+function setCargando(tabla, cols) {
+  clear(tabla).appendChild(h('tr', null, h('td', { colspan: cols, cls: 'muted' }, h('span', { cls: 'loading' }), ' Cargando…')));
+}
+function pintarPendientes() {
+  var t = clear($('tPend'));
+  $('pendVacio').classList.toggle('hidden', S.bandeja.length > 0);
+  $('bSiguiente').disabled = !S.bandeja.length;
+  if (!S.bandeja.length) return;
+  t.appendChild(h('tr', null, th('Asignado', 'asignado'), th('Skill', 'skill'), th('Caso', 'caso'),
+    th('Asesor', 'asesor'), th('Ruta tipificada', 'ruta'), th('Pistas', 'pistas'), h('th')));
+  S.bandeja.forEach(function (c) {
+    var np = c.pistas ? c.pistas.split('\n').filter(function (x) { return x.trim(); }).length : 0;
+    t.appendChild(h('tr', { cls: 'click', on: { click: function () { abrirCaso(c.id, 'bandeja'); } } },
+      h('td', null, fechaCorta(c.asignado.slice(0, 10)), c.atraso ? h('div', null, h('span', { cls: 'chip late', text: 'Atrasado ' + c.atraso + (c.atraso === 1 ? ' día' : ' días') })) : null),
+      h('td', null, chipSkill(c.skill)),
+      h('td', null, h('b', { text: c.caso }), h('div', { cls: 'small muted', text: 'Sábana del ' + fechaCorta(c.fechaSabana) })),
+      h('td', { text: c.asesor }),
+      h('td', null, h('div', { cls: 'trunc ruta', text: c.ruta, title: c.ruta }), h('div', { cls: 'small muted trunc', text: c.resolucion })),
+      h('td', null, np ? h('span', { cls: 'chip hint', text: np + (np === 1 ? ' pista' : ' pistas') }) : ''),
+      h('td', null, h('button', { cls: 'btn sm', text: 'Auditar' }))));
+  });
+}
+
+/* ============================== caso ============================== */
+function abrirCaso(id, origen) {
+  var lista = origen === 'hechas' ? S.hechas : S.bandeja;
+  var c = lista.filter(function (x) { return x.id === id; })[0];
+  if (!c) return;
+  S.caso = c; S.origen = origen;
+  S.resp = { p1: c.p1 || '', p2: c.p2 || '', p3: c.p3 || '', p4: c.p4 || '' };
+  $('cTitulo').textContent = 'Caso ' + c.caso;
+  clear($('cSkill')).appendChild(chipSkill(c.skill));
+  clear($('cAtraso')); if (c.atraso && c.estado !== 'AUDITADO') $('cAtraso').appendChild(h('span', { cls: 'chip late', text: 'Atrasado ' + c.atraso + (c.atraso === 1 ? ' día' : ' días') }));
+  if (c.estado === 'AUDITADO') $('cAtraso').appendChild(h('span', { cls: 'chip ok', text: 'Auditado el ' + fechaCorta(c.fechaAud) + ' · editando' }));
+  var meta = clear($('cMeta'));
+  [['Fecha del caso', fechaCorta(c.fechaCaso), 'fechaCaso'], ['Asesor', c.asesor, 'asesor'], ['Tipo', c.tipo, 'tipo'], ['Canal', c.canal, 'canal'],
+   ['Tema', c.tema, 'tema'], ['Teléfono', telVer(c.tel), 'telefono'], ['Sábana del', fechaCorta(c.fechaSabana), 'sabana']].forEach(function (m) {
+    meta.appendChild(metaItem(m[0], m[1], m[2]));
+  });
+  $('cRuta').textContent = c.ruta; $('cRes').textContent = c.resolucion || '—';
+  $('cPistas').textContent = c.pistas ? 'PISTAS AUTOMÁTICAS (ayudan a mirar, no califican)\n' + c.pistas : '';
+  $('cPistas').classList.toggle('hidden', !c.pistas);
+  $('cCom').textContent = c.comentario || '(sin comentario)';
+  $('cCierre').textContent = c.cierre || '';
+  $('cCierreBox').classList.toggle('hidden', !c.cierre);
+  $('iPatron').value = c.patron || ''; $('iRuta').value = c.rutaCorrecta || ''; $('iObs').value = c.observacion || '';
+  pintarPreguntas(); validarForm();
+  var pos = origen === 'bandeja' ? (S.bandeja.indexOf(c) + 1) + ' de ' + S.bandeja.length + ' pendientes' : 'Corrigiendo una auditoría guardada';
+  $('cPos').textContent = pos;
+  $('cGuardarSig').classList.toggle('hidden', origen !== 'bandeja');
+  ir('caso');
+}
+function pintarPreguntas() {
+  var cont = clear($('qs'));
+  PREG.forEach(function (q) {
+    var k = q[0];
+    var box = h('div', { cls: 'q', id: 'q_' + k }, h('div', { cls: 't', 'data-tip': 'AYUDA:' + k }, q[1], h('span', { cls: 'ayuda', text: '?' })),
+      h('div', { cls: 'd', text: q[2] }));
+    var opts = h('div', { cls: 'opts' });
+    RESP.forEach(function (r) {
+      var cls = r === 'Sí' ? 'si' : r === 'No' ? 'no' : 'duda';
+      opts.appendChild(h('button', { type: 'button', cls: 'opt ' + cls + (S.resp[k] === r ? ' on' : ''), text: r, 'data-k': k, 'data-r': r,
+        on: { click: function () { S.resp[k] = S.resp[k] === r ? '' : r; pintarPreguntas(); validarForm(); } } }));
+    });
+    box.appendChild(opts); cont.appendChild(box);
+  });
+}
+function llenarPatrones() {
+  var sel = clear($('iPatron'));
+  sel.appendChild(h('option', { value: '', text: '— Elija el patrón —' }));
+  (S.user.patrones || []).forEach(function (p) { sel.appendChild(h('option', { value: p, text: p })); });
+}
+function respuestas() {
+  return { p1: S.resp.p1, p2: S.resp.p2, p3: S.resp.p3, p4: S.resp.p4,
+    patron: $('iPatron').value.trim(), rutaCorrecta: $('iRuta').value.trim(), observacion: $('iObs').value.trim() };
+}
+/* misma regla que faltantes_() del servidor */
+function faltantes(v) {
+  var falta = [];
+  ['p1', 'p2', 'p3', 'p4'].forEach(function (k, i) { if (RESP.indexOf(v[k]) < 0) falta.push('P' + (i + 1)); });
+  var hayNo = [v.p1, v.p2, v.p3].indexOf('No') >= 0;
+  var hayDuda = [v.p1, v.p2, v.p3, v.p4].indexOf('Duda') >= 0;
+  if (hayNo && !v.patron) falta.push('Patrón de error');
+  if ((v.p1 === 'No' || v.p2 === 'No') && !v.rutaCorrecta) falta.push('Ruta correcta');
+  if ((hayDuda || /^otro/i.test(v.patron)) && !v.observacion) falta.push('Observación');
+  return falta;
+}
+function calcular(v) {
+  var p = [v.p1, v.p2, v.p3];
+  if (p.indexOf('No') >= 0) return { r: 'MAL TIPIFICADO', c: 'MAL', e: v.p1 === 'No' ? 'Motivo / ruta' : v.p2 === 'No' ? 'Resolución' : 'Cierre Unidad/WF' };
+  if (p.indexOf('Duda') >= 0) return { r: 'CONSULTAR A CALIDAD', c: 'CONS', e: '' };
+  if (v.p4 === 'No') return { r: 'BIEN, COMENTARIO INCOMPLETO', c: 'BIENC', e: 'Comentario incompleto' };
+  if (v.p4) return { r: 'BIEN', c: 'BIEN', e: '' };
+  return { r: 'PENDIENTE', c: 'PEND', e: '' };
+}
+function validarForm() {
+  var v = respuestas(), falta = faltantes(v);
+  var hayNo = [v.p1, v.p2, v.p3].indexOf('No') >= 0;
+  var hayDuda = [v.p1, v.p2, v.p3, v.p4].indexOf('Duda') >= 0;
+  var req = { fPatron: hayNo, fRuta: v.p1 === 'No' || v.p2 === 'No', fObs: hayDuda || /^otro/i.test(v.patron) };
+  Object.keys(req).forEach(function (id) {
+    var f = $(id); f.querySelector('.req').classList.toggle('hidden', !req[id]);
+    var nom = id === 'fPatron' ? 'Patrón de error' : id === 'fRuta' ? 'Ruta correcta' : 'Observación';
+    f.classList.toggle('falta', falta.indexOf(nom) >= 0);
+  });
+  ['p1', 'p2', 'p3', 'p4'].forEach(function (k, i) { $('q_' + k).classList.toggle('falta', falta.indexOf('P' + (i + 1)) >= 0); });
+  var r = falta.length && !(v.p1 && v.p2 && v.p3 && v.p4) ? { r: 'PENDIENTE', c: 'PEND', e: '' } : calcular(v);
+  $('cPill').className = 'pill ' + r.c; $('cPill').textContent = r.r;
+  $('cErr').textContent = r.e ? 'Error principal: ' + r.e : '';
+  $('cFaltan').textContent = falta.length ? 'Falta: ' + falta.join(', ') : '';
+  $('cGuardar').disabled = $('cGuardarSig').disabled = falta.length > 0 || S.guardando;
+  return falta;
+}
+function guardar(seguir) {
+  if (validarForm().length || S.guardando) return;
+  var c = S.caso, v = respuestas();
+  S.guardando = true; validarForm();
+  $('cGuardarSig').textContent = 'Guardando…';
+  api('api_guardar', S.ses, c.id, v).then(function (r) {
+    var idx = S.bandeja.indexOf(c);
+    aplicarBandeja(r);
+    toast('Guardado: caso ' + c.caso + ' · ' + calcular(v).r);
+    if (S.origen === 'hechas') { ir('hechas'); return; }
+    if (seguir && S.bandeja.length) {
+      var sig = S.bandeja[Math.min(Math.max(idx, 0), S.bandeja.length - 1)];
+      S.guardando = false; abrirCaso(sig.id, 'bandeja');
+    } else ir('bandeja');
+  }).catch(function (e) { toast(errMsg(e), true); }).then(function () {
+    S.guardando = false; $('cGuardarSig').textContent = 'Guardar y seguir'; if (S.vista === 'caso') validarForm();
+  });
+}
+
+/* ============================== mis auditorías ============================== */
+function cargarHechas() {
+  setCargando($('tHechas'), 6);
+  api('api_misAuditorias', S.ses).then(function (lista) {
+    S.hechas = lista;
+    var t = clear($('tHechas'));
+    $('hechasVacio').classList.toggle('hidden', lista.length > 0);
+    if (!lista.length) return;
+    t.appendChild(h('tr', null, th('Auditado', 'auditado'), th('Skill', 'skill'), th('Caso', 'caso'),
+      th('Asesor', 'asesor'), th('Resultado', 'resultado'), th('Patrón / ruta correcta', 'patronRuta')));
+    lista.forEach(function (c) {
+      var r = calcular(c);
+      t.appendChild(h('tr', { cls: 'click', on: { click: function () { abrirCaso(c.id, 'hechas'); } } },
+        h('td', { text: fechaCorta(c.fechaAud) }), h('td', null, chipSkill(c.skill)), h('td', null, h('b', { text: c.caso })),
+        h('td', { text: c.asesor }), h('td', null, h('span', { cls: 'pill ' + r.c, text: c.resultado || r.r })),
+        h('td', null, h('div', { text: c.patron || '' }), h('div', { cls: 'small muted', text: c.rutaCorrecta || '' }))));
+    });
+  }).catch(function (e) { toast(errMsg(e), true); });
+}
+
+/* ============================== dashboard ============================== */
+function cargarPanel() {
+  setCargando($('tPanel'), 7);
+  document.querySelectorAll('#pPeriodo button').forEach(function (b) { b.classList.toggle('on', b.dataset.p === S.periodo); });
+  api('api_panel', S.ses, S.periodo).then(pintarPanel).catch(function (e) { toast(errMsg(e), true); });
+}
+function tile(color, lbl, tip, val, subs, x) {
+  var t = h('div', { cls: 'tile ' + color },
+    h('div', { cls: 'lbl', 'data-tip': 'AYUDA:' + tip }, lbl, h('span', { cls: 'ayuda', text: '?' })),
+    h('div', { cls: 'val', text: val }));
+  if (x !== undefined) t.appendChild(h('div', { cls: 'tbar' }, h('i', { style: 'width:' + Math.max(0, Math.min(100, Math.round((x || 0) * 100))) + '%' })));
+  (subs || []).forEach(function (txt) { if (txt) t.appendChild(h('div', { cls: 'sub', text: txt })); });
+  return t;
+}
+function pintarPanel(p) {
+  var nomP = { hoy: 'hoy', semana: 'esta semana', mes: 'este mes', todo: 'desde el inicio' }[p.periodo];
+  var e = p.equipo, d = p.dash, tot = d.total;
+  var metaHoy = Math.max(e.meta || 0, e.hoyAsignadas || 0);
+
+  // indicadores: lo que revisó el sistema, lo que auditó el equipo y el % de error que junta las dos cosas
+  var k = clear($('pTiles'));
+  k.appendChild(tile('negro', 'Casos revisados por el sistema', 'tCasos', miles(tot.casos),
+    [tot.casos ? 'De las sábanas cargadas ' + nomP : 'Se llena al cargar la próxima sábana']));
+  k.appendChild(tile('rojo', 'Errores del sistema', 'tErrSis', miles(tot.errSistema),
+    [tot.casos ? pct1(tot.errorSistema) + ' de los casos revisados' : '', tot.descartados ? tot.descartados + ' descartados por el supervisor' : '']));
+  k.appendChild(tile('gris', 'Auditadas por el equipo', 'tAuditadas', miles(e.auditadas), ['De ' + miles(e.asignadas) + ' asignadas ' + nomP]));
+  k.appendChild(tile('negro', 'Cumplimiento', 'tCumpl', pct(e.cumplimiento),
+    ['Hoy: ' + e.hoyHechas + (metaHoy ? ' de ' + metaHoy : ''), 'Pendientes: ' + e.pendientes + (e.atrasadas ? ' (' + e.atrasadas + ' atrasados)' : '')], e.cumplimiento));
+  k.appendChild(tile('rojo', 'Mal tipificados (equipo)', 'tMal', miles(tot.mal),
+    [(tot.bien + tot.mal) ? pct1(tot.errorMuestra) + ' de error en lo auditado' : 'Todavía sin auditorías decididas',
+     tot.consultar ? tot.consultar + ' para consultar a Calidad' : '']));
+  var decididos = tot.bien + tot.mal;
+  k.appendChild(tile('rojo2', '% de error estimado', 'tEstimado', pct1(tot.errorEstimado),
+    [tot.casos ? 'Unos ' + miles(Math.round(tot.estimados)) + ' casos con error de ' + miles(tot.casos) : 'Falta cargar una sábana con la revisión automática',
+     tot.casos && decididos < 30 ? 'Muestra chica (' + decididos + ' auditorías decididas): se afina con más auditorías' : '']));
+
+  // por skill
+  var ts = clear($('tSkills'));
+  ts.appendChild(h('tr', null, th('Skill', 'dSkill'), th('Casos en la sábana', 'dCasos', 'num'), th('Errores del sistema', 'dErrSis', 'num'),
+    th('% sistema', 'dPctSis', 'num'), th('Asignadas', 'dAsignadas', 'num'), th('Auditadas', 'dAuditadas', 'num'), th('Cumplimiento', 'dCumpl'),
+    th('Mal tipificados', 'dMal', 'num'), th('% error equipo', 'dErrEq', 'num'), th('% error estimado', 'dEstimado', 'num')));
+  function filaSkill(x, total) {
+    var b = h('div', { cls: 'bar' }, h('i')); setBar(b, x.cumplimiento);
+    var dec = x.bien + x.mal;
+    return h('tr', total ? { cls: 'total' } : null,
+      h('td', null, total ? 'Total' : chipSkill(x.skill)),
+      h('td', { cls: 'num', text: miles(x.casos) }),
+      h('td', { cls: 'num' + (x.errSistema ? ' rojo' : ''), text: miles(x.errSistema) }),
+      h('td', { cls: 'num', text: pct1(x.errorSistema) }),
+      h('td', { cls: 'num', text: miles(x.asignadas) }),
+      h('td', { cls: 'num', text: miles(x.auditadas) }),
+      h('td', null, h('div', { cls: 'cumpl' }, b, h('b', { text: pct(x.cumplimiento) }))),
+      h('td', { cls: 'num' + (x.mal ? ' rojo' : ''), text: miles(x.mal) }),
+      h('td', { cls: 'num', 'data-tip': dec ? x.mal + ' mal tipificados de ' + dec + ' auditorías decididas' : null, text: pct1(x.errorMuestra) }),
+      h('td', { cls: 'num', 'data-tip': x.casos ? 'Con ' + dec + (dec === 1 ? ' auditoría decidida' : ' auditorías decididas') + ' del equipo' +
+        (dec < 30 ? ': muestra chica, el % todavía no es confiable.' : '.') : null },
+        h('b', { cls: x.casos && dec < 30 ? 'muted' : null, text: pct1(x.errorEstimado) })));
+  }
+  if (!d.skills.length) ts.appendChild(h('tr', null, h('td', { colspan: 10, cls: 'muted', text: 'Todavía no hay datos ' + nomP + '.' })));
+  d.skills.forEach(function (x) { ts.appendChild(filaSkill(x)); });
+  if (d.skills.length > 1) ts.appendChild(filaSkill(tot, true));
+
+  // errores del sistema por regla
+  var tr = clear($('tReglas'));
+  var totErr = d.reglas.reduce(function (x, r) { return x + r.errores; }, 0);
+  if (!d.reglas.length) tr.appendChild(h('tr', null, h('td', { cls: 'muted', text: 'El sistema no ha marcado errores ' + nomP + '.' })));
+  else tr.appendChild(h('tr', null, th('Regla', 'rRegla'), th('Errores', 'rErrores', 'num'), th('Descartados', 'rDescartados', 'num'), th('% de los errores', 'rPct', 'num')));
+  d.reglas.forEach(function (r) {
+    var exp = EXPLICA_REGLA[r.regla];
+    tr.appendChild(h('tr', null, h('td', { 'data-tip': exp || null }, r.regla, exp ? h('span', { cls: 'ayuda', text: '?' }) : null),
+      h('td', { cls: 'num' + (r.errores ? ' rojo' : ''), text: miles(r.errores) }), h('td', { cls: 'num', text: miles(r.descartados) }),
+      h('td', { cls: 'num', text: totErr ? pct(r.errores / totErr) : '–' })));
+  });
+
+  // errores por skill: sistema (rojo) y equipo (negro)
+  var pb = clear($('pBarras')), mx = 1;
+  d.skills.forEach(function (x) { mx = Math.max(mx, x.errSistema, x.mal); });
+  if (!d.skills.length) pb.appendChild(h('div', { cls: 'muted small', text: 'Todavía no hay datos ' + nomP + '.' }));
+  d.skills.forEach(function (x) {
+    pb.appendChild(h('div', { cls: 'fila' }, h('div', null, chipSkill(x.skill)), h('div', { cls: 'par' },
+      h('div', { cls: 'linea', 'data-tip': x.errSistema + ' errores del sistema' }, h('div', { cls: 'b sis', style: 'width:' + Math.round(x.errSistema / mx * 85) + '%' }), h('span', { cls: 'n', text: miles(x.errSistema) })),
+      h('div', { cls: 'linea', 'data-tip': x.mal + ' mal tipificados por el equipo' }, h('div', { cls: 'b eq', style: 'width:' + Math.round(x.mal / mx * 85) + '%' }), h('span', { cls: 'n', text: miles(x.mal) })))));
+  });
+
+  // cumplimiento por auditor
+  $('pDef').textContent = 'Cumplimiento = auditadas ÷ asignadas (casos asignados ' + nomP + '). Pendientes y atrasados cuentan todo lo que falta, de cualquier fecha.';
+  var t = clear($('tPanel'));
+  t.appendChild(h('tr', null, th('Auditor', 'aAuditor'), th('Asignadas', 'aAsignadas', 'num'), th('Auditadas', 'aAuditadas', 'num'),
+    th('Cumplimiento', 'aCumpl'), th('Hoy', 'aHoy', 'num'), th('Pendientes', 'aPend', 'num'), th('Atrasados', 'aAtras', 'num')));
+  function fila(a, fuerte) {
+    var b = h('div', { cls: 'bar' }, h('i')); setBar(b, a.cumplimiento);
+    var mh = Math.max(a.meta || 0, a.hoyAsignadas || 0);
+    return h('tr', fuerte ? { cls: 'total' } : null,
+      h('td', null, a.nombre, a.activo === false ? h('span', { cls: 'chip', style: 'margin-left:6px', text: 'inactivo' }) : null),
+      h('td', { cls: 'num', text: a.asignadas }), h('td', { cls: 'num', text: a.auditadas }),
+      h('td', null, h('div', { cls: 'cumpl' }, b, h('b', { text: pct(a.cumplimiento) }))),
+      h('td', { cls: 'num', text: a.hoyHechas + (mh ? ' / ' + mh : '') }),
+      h('td', { cls: 'num', text: a.pendientes }),
+      h('td', { cls: 'num' }, a.atrasadas ? h('span', { cls: 'chip late', text: a.atrasadas }) : '0'));
+  }
+  p.auditores.forEach(function (a) { t.appendChild(fila(a)); });
+  t.appendChild(fila(e, true));
+
+  // auditorías por día
+  var ch = clear($('pChart')), mxd = Math.max.apply(null, p.dias.map(function (x) { return x.n; }).concat([1]));
+  p.dias.forEach(function (x) {
+    ch.appendChild(h('div', { cls: 'col', 'data-tip': fechaCorta(x.fecha) + ': ' + x.n + (x.n === 1 ? ' auditoría' : ' auditorías') },
+      h('div', { cls: 'n', text: x.n || '' }),
+      h('div', { cls: 'b', style: 'height:' + Math.round(x.n / mxd * 86) + 'px' + (x.fecha === p.hoy ? ';background:var(--accent)' : '') }),
+      h('div', { cls: 'd', text: +x.fecha.slice(8, 10) })));
+  });
+
+  // errores más frecuentes (equipo y sistema) y asesores con más errores
+  var pl = clear($('pPat'));
+  if (!d.frecuentes.length) pl.appendChild(h('li', { cls: 'muted', text: 'Sin errores ' + nomP + '.' }));
+  d.frecuentes.forEach(function (x) {
+    pl.appendChild(h('li', null, h('span', null, x.nombre, ' ', h('span', { cls: 'chip ' + (x.fuente === 'Sistema' ? 'sis' : 'eq'), text: x.fuente })), h('b', { text: x.n })));
+  });
+  var al = clear($('pAse'));
+  if (!d.asesores.length) al.appendChild(h('li', { cls: 'muted', text: 'Sin errores ' + nomP + '.' }));
+  d.asesores.forEach(function (x) {
+    al.appendChild(h('li', null, h('span', null, x.asesor, ' ', chipSkill(x.skill),
+      h('div', { cls: 'small muted', text: 'Sistema: ' + x.sistema + ' · Equipo: ' + x.equipo })), h('b', { text: x.total })));
+  });
+}
+
+/* ============================== sistema (errores que encontró la revisión automática) ============================== */
+function cargarSistema() {
+  setCargando($('tSistema'), 7);
+  $('sistemaVacio').classList.add('hidden');
+  clear($('sDetalle')).classList.add('hidden');
+  document.querySelectorAll('#sPeriodo button').forEach(function (b) { b.classList.toggle('on', b.dataset.p === S.periodoSis); });
+  api('api_sistema', S.ses, S.periodoSis).then(function (r) { S.sis = r; pintarSistema(); }).catch(function (e) { toast(errMsg(e), true); });
+}
+function estadoSis(x) {
+  return h('div', null, h('span', { cls: 'estado ' + (x.resultado === 'ERROR' ? 'ERROR' : 'NO'), text: x.resultado }),
+    x.revision ? h('div', { cls: 'small muted', text: x.revision + ' · ' + x.revisadoPor }) : null);
+}
+function pintarSistema() {
+  var r = S.sis, t = clear($('tSistema'));
+  $('sNota').textContent = r.supervisor
+    ? 'Toque un caso para revisarlo. Si el sistema se equivocó, márquelo «No es error» y escriba por qué: deja de contar y con eso se afinan las reglas.'
+    : 'Toque un caso para ver el detalle. Si cree que el sistema se equivocó, avísele al supervisor: él lo puede marcar «No es error».';
+  $('sistemaVacio').classList.toggle('hidden', r.casos.length > 0);
+  if (!r.casos.length) return;
+  t.appendChild(h('tr', null, th('Sábana del', 'sFecha'), th('Skill', 'skill'), th('Caso', 'sCaso'), th('Asesor', 'asesor'),
+    th('Regla', 'sRegla'), th('Por qué lo marcó', 'sPorque'), th('Estado', 'sEstado')));
+  r.casos.forEach(function (x) {
+    t.appendChild(h('tr', { cls: 'click', 'data-id': x.id, on: { click: function () { verSistema(x.id); } } },
+      h('td', { text: fechaCorta(x.fechaSabana) }), h('td', null, chipSkill(x.skill)), h('td', null, h('b', { text: x.caso })),
+      h('td', { text: x.asesor }), h('td', { text: x.regla }),
+      h('td', null, h('div', { cls: 'small', style: 'max-width:520px', text: x.detalle })),
+      h('td', null, estadoSis(x))));
+  });
+  if (r.total > r.casos.length) t.appendChild(h('tr', null, h('td', { colspan: 7, cls: 'small muted', text: 'Se ven los ' + r.casos.length + ' más recientes de ' + r.total + '.' })));
+}
+function verSistema(id) {
+  var x = S.sis.casos.filter(function (c) { return c.id === id; })[0];
+  if (!x) return;
+  var d = clear($('sDetalle'));
+  d.classList.remove('hidden');
+  d.appendChild(h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' },
+    h('h3', { text: 'Caso ' + x.caso }), chipSkill(x.skill), estadoSis(x), h('span', { style: 'flex:1' }),
+    h('button', { cls: 'btn sm', text: 'Cerrar', on: { click: function () { d.classList.add('hidden'); } } })));
+  d.appendChild(h('div', { cls: 'meta' }, metaItem('Sábana del', fechaCorta(x.fechaSabana), 'sFecha'), metaItem('Asesor', x.asesor, 'asesor'),
+    metaItem('Tipo', x.tipo, 'tipo'), metaItem('Regla', x.regla, 'sRegla')));
+  d.appendChild(h('div', { cls: 'rutabox' }, h('div', { cls: 'small muted', text: 'RUTA TIPIFICADA' }), h('div', { cls: 'r', text: x.ruta }),
+    h('div', { cls: 'resol' }, h('span', { cls: 'small muted', text: 'RESOLUCIÓN: ' }), h('b', { text: x.resolucion || '—' }))));
+  d.appendChild(h('div', { cls: 'pistas', style: 'border-left:3px solid var(--accent)' }, h('b', { text: 'Por qué lo marcó: ' }), x.detalle));
+  d.appendChild(h('div', { cls: 'small muted', style: 'margin-top:12px;font-weight:600', text: 'COMENTARIO DEL ASESOR' }));
+  d.appendChild(h('div', { cls: 'coment', text: x.comentario || '(sin comentario)' }));
+  if (x.revision) d.appendChild(h('div', { cls: 'small', style: 'margin-top:10px' }, h('b', { text: 'Revisión: ' }),
+    x.revision + ' · ' + x.revisadoPor + ' · ' + fechaCorta(x.fechaRevision), x.obsRevision ? h('div', { text: 'Observación: ' + x.obsRevision }) : null));
+  if (S.sis.supervisor) {
+    var obs = h('textarea', { id: 'sObs', maxlength: '500', placeholder: 'Por qué no es error (obligatorio para «No es error»)' });
+    obs.value = x.obsRevision || '';
+    d.appendChild(h('div', { cls: 'fld', style: 'margin-top:12px' },
+      h('label', { 'for': 'sObs' }, 'Observación de la revisión', h('span', { cls: 'ayuda', 'data-tip': 'AYUDA:sObs', text: '?' })), obs));
+    d.appendChild(h('div', { cls: 'acciones' },
+      h('button', { cls: 'btn primary', id: 'sConfirmar', text: 'Error confirmado', on: { click: function () { revisarSis(x, 'Error confirmado'); } } }),
+      h('button', { cls: 'btn negro', id: 'sNoEs', text: 'No es error', on: { click: function () { revisarSis(x, 'No es error'); } } }),
+      x.revision ? h('button', { cls: 'btn', id: 'sQuitar', text: 'Quitar la revisión', on: { click: function () { revisarSis(x, ''); } } }) : null));
+  }
+  window.scrollTo({ top: Math.max(0, d.getBoundingClientRect().top + window.pageYOffset - 80), behavior: 'smooth' });
+}
+function revisarSis(x, rev) {
+  if (S.revisando) return;
+  var obs = $('sObs') ? $('sObs').value.trim() : '';
+  if (rev === 'No es error' && !obs) { toast('Escriba por qué no es error: con eso se afinan las reglas.', true); $('sObs').focus(); return; }
+  S.revisando = true;
+  document.querySelectorAll('#sDetalle .acciones button').forEach(function (b) { b.disabled = true; });
+  api('api_revisarSistema', S.ses, x.id, rev, obs).then(function (nuevo) {
+    var i = S.sis.casos.indexOf(x); if (i >= 0) S.sis.casos[i] = nuevo;
+    S.revisando = false;
+    pintarSistema(); verSistema(nuevo.id);
+    toast(rev ? 'Caso ' + nuevo.caso + ': ' + rev : 'Se quitó la revisión del caso ' + nuevo.caso);
+  }).catch(function (e) {
+    S.revisando = false;
+    document.querySelectorAll('#sDetalle .acciones button').forEach(function (b) { b.disabled = false; });
+    toast(errMsg(e), true);
+  });
+}
+
+/* ============================== cargar sábana ============================== */
+var CAMPOS_ARCH = { fecha: 'fecha', caso: 'caso', tipo: 'tipo', tel: 'telefono con falla', canal: 'servicio inicial', tema: 'tema',
+  cac: 'cac', mercado: 'mercado', n2: 'nivel ii', n3: 'nivel iii', n4: 'nivel iv', res: 'resolucion', com: 'comentario o falla',
+  gestor: 'gestor que ingreso', cierre: 'comentario de cierre' };
+var OBLIG = ['fecha', 'caso', 'tipo', 'cac', 'n2', 'n3', 'n4', 'res', 'com', 'gestor'];
+
+function cargarEstado() {
+  api('api_estadoCargas', S.ses).then(function (r) {
+    S.cargas = r;
+    var t = clear($('tCuotas')), sk = Object.keys(r.skills);
+    t.appendChild(h('tr', null, th('Auditor', 'cAuditor'), sk.map(function (s) { return th(chipSkill(s), 'cSkillCuota', 'num'); }), th('Total', 'cTotal', 'num')));
+    r.auditores.forEach(function (a) {
+      t.appendChild(h('tr', null, h('td', { text: a.nombre }), sk.map(function (s) { return h('td', { cls: 'num', text: a.cuotas[s] || 0 }); }), h('td', { cls: 'num' }, h('b', { text: a.meta }))));
+    });
+    var g = clear($('tCargas'));
+    if (!r.ultimas.length) g.appendChild(h('tr', null, h('td', { cls: 'muted', text: 'Todavía no se ha cargado ninguna sábana.' })));
+    else g.appendChild(h('tr', null, th('Sábana del', 'cSabana'), th('Cargada', 'cCargada'), th('Casos', 'cCasos', 'num')));
+    r.ultimas.forEach(function (c) {
+      g.appendChild(h('tr', null, h('td', { text: fechaCorta(c.fecha) }), h('td', null, fechaCorta(c.cargadaEl), h('div', { cls: 'small muted', text: c.por })), h('td', { cls: 'num', text: c.asignados })));
+    });
+    if (S.archivo) pintarFechas();
+  }).catch(function (e) { toast(errMsg(e), true); });
+}
+
+function cargarXLSX() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise(function (ok, ko) {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = function () { ok(); }; s.onerror = function () { ko(new Error('No se pudo cargar el lector de Excel. Revisen la conexión.')); };
+    document.head.appendChild(s);
+  });
+}
+
+function fechaTxt(v) {
+  if (typeof v === 'number' && v > 20000 && v < 80000) {
+    var d = XLSX.SSF.parse_date_code(v);
+    return d.y + '-' + p2(d.m) + '-' + p2(d.d) + ' ' + p2(d.H) + ':' + p2(d.M) + ':' + p2(d.S);
+  }
+  if (v instanceof Date && !isNaN(v)) return v.getFullYear() + '-' + p2(v.getMonth() + 1) + '-' + p2(v.getDate()) + ' ' + p2(v.getHours()) + ':' + p2(v.getMinutes()) + ':' + p2(v.getSeconds());
+  var s = String(v == null ? '' : v).trim(), m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(s);
+  if (m) return m[1] + '-' + p2(m[2]) + '-' + p2(m[3]) + ' ' + p2(m[4]) + ':' + p2(m[5]) + ':' + p2(m[6]);
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(s);
+  if (m) { var y = +m[3]; if (y < 100) y += 2000; return y + '-' + p2(m[2]) + '-' + p2(m[1]) + ' ' + p2(m[4]) + ':' + p2(m[5]) + ':' + p2(m[6]); }
+  return '';
+}
+
+function leerArchivo(file) {
+  $('dEstado').innerHTML = ''; $('dEstado').appendChild(h('span', null, h('span', { cls: 'loading' }), ' Leyendo «' + file.name + '»… (una sábana del mes puede tardar unos segundos)'));
+  clear($('dResultado')); $('dFechas').classList.add('hidden');
+  cargarXLSX().then(function () {
+    return new Promise(function (ok, ko) {
+      var fr = new FileReader();
+      fr.onload = function () { ok(fr.result); }; fr.onerror = function () { ko(new Error('No se pudo leer el archivo.')); };
+      fr.readAsArrayBuffer(file);
+    });
+  }).then(function (buf) {
+    var esCsv = /\.csv$/i.test(file.name);
+    var wb = XLSX.read(new Uint8Array(buf), { type: 'array', raw: esCsv, cellDates: false, dense: true });
+    var datos = null, faltan = null;
+    wb.SheetNames.some(function (nom) {
+      var aoa = XLSX.utils.sheet_to_json(wb.Sheets[nom], { header: 1, raw: true, defval: '' });
+      for (var i = 0; i < Math.min(15, aoa.length); i++) {
+        var hdr = aoa[i].map(nrm);
+        if (hdr.indexOf('caso') >= 0 && hdr.indexOf('cac') >= 0) {
+          var ix = {};
+          Object.keys(CAMPOS_ARCH).forEach(function (k) { ix[k] = hdr.indexOf(CAMPOS_ARCH[k]); });
+          var f = OBLIG.filter(function (k) { return ix[k] < 0; });
+          if (f.length) { faltan = f.map(function (k) { return CAMPOS_ARCH[k]; }); return false; }
+          datos = { hoja: nom, filas: aoa.slice(i + 1), ix: ix };
+          return true;
+        }
+      }
+      return false;
+    });
+    if (!datos) throw new Error(faltan ? 'Al archivo le faltan columnas: ' + faltan.join(', ') + '.' : 'No encontré los encabezados (Caso, CAC…) en el archivo.');
+    var g = function (r, k) { var i = datos.ix[k]; return i < 0 ? '' : r[i]; };
+    var t = function (r, k) { var v = g(r, k); return v == null ? '' : String(v).trim(); };
+    var filas = [];
+    datos.filas.forEach(function (r) {
+      var caso = t(r, 'caso'); if (!caso) return;
+      var fecha = fechaTxt(g(r, 'fecha')); if (!fecha) return;
+      filas.push({ fecha: fecha, dia: fecha.slice(0, 10), caso: caso.replace(/\.0$/, ''), tipo: t(r, 'tipo'), tel: t(r, 'tel'),
+        canal: t(r, 'canal'), tema: t(r, 'tema'), cac: t(r, 'cac'), mercado: t(r, 'mercado'), n2: t(r, 'n2'), n3: t(r, 'n3'),
+        n4: t(r, 'n4'), res: t(r, 'res'), com: String(g(r, 'com') == null ? '' : g(r, 'com')), gestor: t(r, 'gestor').replace(/\s+/g, ' '),
+        cierre: String(g(r, 'cierre') == null ? '' : g(r, 'cierre')) });
+    });
+    if (!filas.length) throw new Error('El archivo no trae casos con fecha.');
+    S.archivo = { nombre: file.name, filas: filas };
+    $('dEstado').textContent = '«' + file.name + '»: ' + filas.length.toLocaleString('es-HN') + ' casos leídos de la hoja «' + datos.hoja + '».';
+    pintarFechas();
+  }).catch(function (e) { $('dEstado').textContent = ''; S.archivo = null; toast(errMsg(e), true); });
+}
+
+function pintarFechas() {
+  if (!S.archivo || !S.cargas) return;
+  var skills = Object.keys(S.cargas.skills), cargadas = S.cargas.fechasCargadas;
+  var porDia = {};
+  S.archivo.filas.forEach(function (r) {
+    var d = porDia[r.dia] || (porDia[r.dia] = { total: 0 });
+    d.total++;
+    skills.forEach(function (s) { if (nrm(r.cac) === nrm(s)) d[s] = (d[s] || 0) + 1; });
+  });
+  var dias = Object.keys(porDia).sort();
+  var nuevas = dias.filter(function (d) { return cargadas.indexOf(d) < 0; });
+  var porDefecto = nuevas.length ? nuevas[nuevas.length - 1] : null;
+  var sup = S.user.rol === 'SUPERVISOR';
+  var t = clear($('tFechas'));
+  t.appendChild(h('tr', null, h('th'), th('Fecha', 'fFecha'), skills.map(function (s) { return th(chipSkill(s), 'fSkill', 'num'); }), th('Estado', 'fEstado')));
+  dias.slice().reverse().forEach(function (d) {
+    var ya = cargadas.indexOf(d) >= 0;
+    var cb = h('input', { type: 'checkbox', 'data-dia': d, on: { change: planCarga } });
+    if (d === porDefecto) cb.checked = true;
+    if (ya && !sup) cb.disabled = true;
+    t.appendChild(h('tr', null, h('td', null, cb), h('td', { text: fechaCorta(d) }),
+      skills.map(function (s) { return h('td', { cls: 'num', text: (porDia[d][s] || 0).toLocaleString('es-HN') }); }),
+      h('td', null, ya ? h('span', { cls: 'chip ok', text: sup ? 'Ya cargada (puede volver a cargarla)' : 'Ya cargada' }) : h('span', { cls: 'chip warn', text: 'Nueva' }))));
+  });
+  $('dFechas').classList.remove('hidden');
+  planCarga();
+}
+
+function diasElegidos() {
+  return Array.prototype.map.call(document.querySelectorAll('#tFechas input[type=checkbox]:checked'), function (c) { return c.dataset.dia; }).sort();
+}
+function planCarga() {
+  var dias = diasElegidos(), aud = S.cargas.auditores;
+  var porDia = aud.reduce(function (s, a) { return s + a.meta; }, 0);
+  var detalle = Object.keys(S.cargas.skills).map(function (s) { return S.cargas.skills[s] + ' de ' + s; }).join(' + ');
+  $('dPlan').textContent = dias.length
+    ? 'Se asignarán ' + porDia * dias.length + ' casos: ' + aud.length + ' auditores × ' + dias.length + (dias.length === 1 ? ' fecha' : ' fechas') + ' (' + detalle + ' por fecha).'
+    : 'Elijan al menos una fecha.';
+  $('dAsignar').disabled = !dias.length || !aud.length;
+}
+
+/* pistas automáticas: mismas búsquedas que la plantilla de Excel */
+var PAL = {
+  motivo: ['solicita', 'consulta', 'reporta', 'indica', 'desea', 'quiere', 'reclam', 'informaci', 'pregunta', 'llama para', 'requiere', 'necesita'],
+  pruebas: ['reset', 'reinici', 'prueba', 'mantenimiento', 'clean', 'refresh', 'desbloque', 'reboot', 'desconexi', 'fix'],
+  susp: ['suspendid', 'mora', 'falta de pago', 'facturas pendientes', 'factura pendiente', 'saldo pendiente'],
+  tv: ['canales', 'decodificador', 'control remoto', 'señal de tv', 'cable tv', 'tv dth', 'caja de tv', 'iptv', 'stb', 'pantalla'],
+  net: ['internet', 'naveg', 'wifi', 'wi-fi', 'modem', 'módem', 'router', 'inalambric', 'lentitud', 'gpon'],
+  paises: ['roaming', 'extranjero', 'estados unidos', 'nicaragua', 'guatemala', 'el salvador', 'mexico', 'méxico', 'españa', 'belice', 'costa rica', 'panam'],
+  clave: ['contraseña', 'contrasena', 'password', 'clave wifi', 'clave de wifi', 'clave del wifi', 'clave nueva', 'nueva clave', 'pass:']
+};
+function tiene(t, ws) { t = String(t || '').toLowerCase(); return ws.some(function (w) { return t.indexOf(w) >= 0; }); }
+function pistasDe(r) {
+  var ruta = [r.mercado, r.n2, r.n3, r.n4, r.res].join(' '), com = r.com, out = [];
+  var lne = tiene(r.n4, ['no efectiva']);
+  if (lne && tiene(com, PAL.motivo)) out.push('Llamada no efectiva con texto: si el comentario dice el motivo, es error (P1).');
+  if (tiene(ruta, ['servicio ok']) && tiene(com, PAL.pruebas)) out.push('«Servicio OK» pero hubo pruebas o soporte (P2).');
+  if (tiene(com, PAL.susp) && (tiene(r.n2, ['aver', 'soporte']) || tiene(r.n4, ['fecha l']))) out.push('Habla de suspensión o pago pendiente y la ruta es técnica o «Fecha límite de pago» (P1).');
+  var tv = tiene(com, PAL.tv), net = tiene(com, PAL.net);
+  if (tiene(r.n3, ['internet']) && tv && !net) out.push('Habla solo de TV y la ruta es de Internet (P1).');
+  if (tiene(r.n3, ['tv', 'iptv']) && net && !tv) out.push('Habla solo de Internet y la ruta es de TV (P1).');
+  if (tiene(ruta, ['favorit']) && !tiene(com, ['favorit'])) out.push('«Número favorito» y el comentario no lo menciona (P1).');
+  if (tiene(com, PAL.paises) && !tiene(ruta, ['roaming'])) out.push('Menciona otro país o roaming y la ruta no es de Roaming (P1).');
+  if (!lne && !tiene(r.n4, ['transferida']) && com.trim().length < 40) out.push('Comentario muy corto (P4).');
+  if (tiene(com, PAL.clave)) out.push('Posible contraseña escrita en el comentario (seguridad).');
+  return out;
+}
+/* datos protegidos: se tapan en esta computadora, antes de enviarlos a Google (CONFIG › TAPAR_DATOS) */
+/* tapa números largos (teléfonos, identidades, cuentas), correos y palabras con @, y los nombres y direcciones de las plantillas;
+   las fechas se quedan. Lo mismo hace tapar_() en Code.gs. */
+var ETQ_NOMBRE = /((?:nombre|titular)[A-Za-z]*(?:\s+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+){0,4})[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\n:;]{0,12}[:;]/gi;
+var ETQ_DIRECCION = /(direcci[oó]n|colonia|domicilio)[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\n:;]{0,12}[:;]/gi;
+var CORTE_NOMBRE = /\s(?:nombre|n[uú]mero|c[eé]dula|ced|identidad|correo|contrato|genesys|tel[eé]fono|id|problema|descripci[oó]n|detalles?|tecnolog[ií]a|servicio|consulta|observaci[oó]n(?:es)?|pruebas?|soporte|direcci[oó]n|monto|ticket|aver[ií]a|contacto)\b/i;
+function taparEtiqueta(s, re, marca, soloLetras) {
+  var out = '', i = 0, m;
+  re.lastIndex = 0;
+  while ((m = re.exec(s))) {
+    var ini = m.index + m[0].length;
+    var finLinea = s.indexOf('\n', ini); if (finLinea < 0) finLinea = s.length;
+    var resto = s.slice(ini, finLinea);
+    var largo = resto.length;
+    var c = resto.search(CORTE_NOMBRE); if (c >= 0) largo = Math.min(largo, c);
+    if (soloLetras) { var l = resto.search(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ.' \t-]/); if (l >= 0) largo = Math.min(largo, l); }
+    var valor = resto.slice(0, largo);
+    out += s.slice(i, ini) + (valor.trim() ? ' ' + marca + ' ' : valor);
+    i = ini + largo;
+    re.lastIndex = i;
+  }
+  return out + s.slice(i);
+}
+function tapar(t) {
+  var fechas = [];
+  var s = String(t == null ? '' : t).replace(/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b/g, function (m) {
+    fechas.push(m); return '⟦' + (fechas.length - 1) + '⟧';
+  });
+  s = taparEtiqueta(s, ETQ_NOMBRE, '[nombre]', true);
+  s = taparEtiqueta(s, ETQ_DIRECCION, '[dirección]', false);
+  s = s.replace(/[^\s,;]*@[^\s,;]*/g, '[correo]').replace(/\d(?:[ -]?\d){5,}/g, '[número]');
+  return s.replace(/⟦(\d+)⟧/g, function (m, i) { return fechas[+i]; });
+}
+function a64url(buf) {
+  var b = ''; new Uint8Array(buf).forEach(function (x) { b += String.fromCharCode(x); });
+  return btoa(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+/** Teléfono cifrado: se ven solo los últimos 4 números; el resto es una firma que sirve para comparar. */
+function telProtegido(tel, llave) {
+  var t = String(tel == null ? '' : tel).replace(/\D/g, '');
+  if (!t) return Promise.resolve('');
+  return crypto.subtle.sign('HMAC', llave, new TextEncoder().encode(t)).then(function (sig) {
+    return '••••' + t.slice(-4) + ' h' + a64url(sig).slice(0, 16);
+  });
+}
+function protegerDatos(casos, wf, sistema) {
+  if (!S.cargas.tapar) return Promise.resolve();
+  casos.forEach(function (c) { c.comentario = tapar(c.comentario); c.cierre = tapar(c.cierre); });
+  (sistema || []).forEach(function (x) { x.comentario = tapar(x.comentario); });
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(S.cargas.sal), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+    .then(function (k) {
+      return Promise.all(casos.concat(wf).map(function (x) { return telProtegido(x.tel, k).then(function (v) { x.tel = v; }); }));
+    });
+}
+function telVer(t) { return String(t == null ? '' : t).split(' h')[0]; }
+
+/* ============================== revisión automática ============================== */
+/* El sistema revisa todas las tipificaciones del día antes de asignar. Las mismas reglas de la versión de Excel (reglas.ts).
+ * Regla 1 · Tecnología contradictoria: el comentario dice una tecnología (DTH, HFC, GPON, IPTV, WTTH, IFI) y la ruta
+ *   (Nivel III) es de otra. Compatibles: IPTV con GPON y con HFC (IPTV híbrido); WTTH (WTTX) con IFI.
+ *   Para no marcar errores injustos solo se lee lo que el asesor afirma del cliente: los campos «Tecnología:», «Servicio:»,
+ *   «Contrato: …//dth» y el problema reportado; si el comentario no usa plantilla, todo el texto.
+ *   Se ignoran frases de plantilla como «residencial | satelital» o «MAC o IFI».
+ * Regla 2 · Abandono o corte con motivo escrito: Nivel IV «Llamada no Efectiva» con resolución «Cliente Corto» o
+ *   «Cliente abandona interacción», pero el comentario dice por qué llamó el cliente. Si el asesor supo el motivo,
+ *   debió usar la ruta de ese motivo. */
+var DIACRITICOS = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+var REGLA_TEC = 'Tecnología contradictoria';
+var REGLA_ABANDONO = 'Abandono o corte con motivo escrito';
+// tecnologías en campos donde el asesor afirma la tecnología del cliente
+var TEC_FUERTE = [['DTH', /\bdth\b|satelit/], ['HFC', /\bhfc\b|coaxial|cable ?modem|\bcable\b/], ['GPON', /\bgpon\b|fibra/],
+  ['IPTV', /\biptv\b/], ['WTTH', /\bwtt[hx]\b|\bwwth\b/], ['IFI', /\bifi\b|inalambric/]];
+// tecnologías en el problema reportado o en texto libre (más estricto: «fibra» o «cable» solos no cuentan)
+var TEC_TEXTO = [['DTH', /\bdth\b|\btv satelital\b|\bservicio satelital\b/], ['HFC', /\bhfc\b/], ['GPON', /\bgpon\b/],
+  ['IPTV', /\biptv\b/], ['WTTH', /\bwtt[hx]\b|\bwwth\b/], ['IFI', /\bifi\b/]];
+var COMPATIBLES = { IPTV: ['GPON', 'HFC'], GPON: ['IPTV'], HFC: ['IPTV'], WTTH: ['IFI'], IFI: ['WTTH'] };
+// frases de plantilla que nombran tecnologías sin ser del cliente
+var RUIDO_TEC = /residencial\s*[|\/o]+\s*satelital|mac\s*(?:o|u|\/|y)\s*(?:ifi|ont)\b|serial\s*(?:ont|ifi)\b/g;
+var ETQ_TEC = /(?:tecnologia|servicio)\s*[:;]\s*([^\n]{0,40})/g;
+var ETQ_CONTRATO = /contrato\s*[:;]?\s*\d+\s*\/+\s*([a-z]+)/g;
+var ETQ_PROBLEMA = /(?:p?roblema reportado|detalles? del (?:caso|inconveniente)|descripcion del caso|falla reportada|motivo de (?:la )?llamada|motivo|consulta)\s*[:;]([^\n]*)(?:\n([^\n]*))?/g;
+var SIGUIENTE_ETQ = /\b(?:soporte realizado|pruebas? realizad[ao]s?|pruebas realizes|prueba realizada|observaciones?|tecnologia|numero de|nombre|ticket|averia|mac|genesys|contrato|id cliente|identidad|correo)\s*[:;]/;
+var LINEA_ETIQUETA = /^[^:;]{1,40}[:;]/;
+var LINEA_DATOS = /^\W*(?:nombre|numero|n°|identidad|cedula|ced|contrato|genesys|telefono|correo|id cliente|contacto)/;
+var SIN_MOTIVO = new RegExp([
+  'llamada no efectiv\\w*', 'cliente\\s+(?:\\w+\\s+)?cort\\w*(?: la llamada)?', 'cort\\w* la llamada', '\\bcort[oa]\\b',
+  '\\w*abandon\\w*(?: la (?:llamada|interaccion))?', 'finaliza la llamada(?: antes de \\w+)?', 'no responde', 'no contesta',
+  'inconsistente', 'falta de informacion', 'sin datos(?: del titular)?', 'no se escucha', 'llamada muda', 'observaciones?', '\\bn\\s?\\/?\\s?a\\b'
+].join('|'), 'g');
+var PAL_MOTIVO = /\b(?:internet|naveg\w*|wifi|wi fi|modem|router|senal|tv|televis\w*|canal\w*|cajita|caja|decodificador|control|servicio|falla|lent\w*|intermit\w*|contrasen\w*|clave|factura\w*|pago|cobro\w*|saldo|recarga\w*|paquete\w*|plan|linea|chip|sim|datos moviles|megas|roaming|traslado|instalacion|visita|tecnic\w*|averia|beneficio|informacion|solicita\w*|consulta\w*|reclam\w*|cambio|cancel\w*|portabilidad|esim)\b/;
+
+/** Comentario en minúsculas, sin tildes ni emojis, con los saltos de línea. */
+function textoLimpio(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(DIACRITICOS, '').toLowerCase()
+    .replace(/[^\x20-\x7E\n]/g, ' ').replace(/[ \t]+/g, ' ').replace(RUIDO_TEC, ' ');
+}
+function tecnologias(t, pal) { return pal.filter(function (x) { return x[1].test(t); }).map(function (x) { return x[0]; }); }
+function capturas(t, re) {
+  var out = [], m;
+  re.lastIndex = 0;
+  while ((m = re.exec(t))) out.push(m[1] || '');
+  return out;
+}
+/** Lo que el asesor escribió como problema o motivo del cliente (sin los datos de la plantilla que siguen). */
+function problemas(t) {
+  var out = [], m;
+  ETQ_PROBLEMA.lastIndex = 0;
+  while ((m = ETQ_PROBLEMA.exec(t))) {
+    var v = (m[1] || '').trim();
+    if (!v && m[2] && !LINEA_ETIQUETA.test(m[2].trim())) v = m[2].trim();
+    var corte = v.search(SIGUIENTE_ETQ);
+    if (corte >= 0) v = v.slice(0, corte);
+    if (v.trim()) out.push(v.trim());
+  }
+  return out;
+}
+function reglaTecnologia(r) {
+  var ruta = tecnologias(textoLimpio(r.n3), TEC_TEXTO);
+  if (!ruta.length) return null;
+  var t = textoLimpio(r.com);
+  var fuertes = capturas(t, ETQ_TEC).concat(capturas(t, ETQ_CONTRATO));
+  var prob = problemas(t);
+  var com = tecnologias(fuertes.join(' '), TEC_FUERTE);
+  tecnologias(prob.join(' '), TEC_TEXTO).forEach(function (x) { if (com.indexOf(x) < 0) com.push(x); });
+  if (!fuertes.length && !prob.length) com = tecnologias(t, TEC_TEXTO);
+  if (!com.length) return null;
+  var cuadra = ruta.some(function (x) {
+    return com.indexOf(x) >= 0 || com.some(function (c) { return (COMPATIBLES[c] || []).indexOf(x) >= 0; });
+  });
+  if (cuadra) return null;
+  return { regla: REGLA_TEC, detalle: 'El comentario dice ' + com.join(' / ') + ' y la ruta es de ' + ruta.join(' / ') + ' (' + r.n3 + ').' };
+}
+/** El motivo que escribió el asesor, sin las frases de «se cortó» ni los datos de la plantilla. */
+function motivoEscrito(com) {
+  var t = textoLimpio(com);
+  var motivo = problemas(t).join(' ');
+  if (!motivo) motivo = t.split('\n').filter(function (l) { return !LINEA_DATOS.test(l.trim()); }).join(' ');
+  return motivo.replace(SIN_MOTIVO, ' ').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function reglaAbandono(r, tapado) {
+  if (nrm(r.n4) !== 'llamada no efectiva' || !/cliente cort|abandona/.test(nrm(r.res))) return null;
+  var motivo = motivoEscrito(r.com);
+  if (!PAL_MOTIVO.test(motivo)) return null;
+  if (tapado) motivo = motivoEscrito(tapar(r.com));   // lo que se guarda como explicación va sin nombres ni datos
+  return {
+    regla: REGLA_ABANDONO,
+    detalle: 'Tipificó «' + r.res.replace(/\s*-\s*r\s*$/i, '').replace(/\s+/g, ' ').trim() + '», pero el comentario dice el motivo: «' +
+      (motivo.length > 140 ? motivo.slice(0, 140) + '…' : motivo) + '». Debió usar la ruta de ese motivo.'
+  };
+}
+/** Todas las reglas: el primer hallazgo, o null si el caso pasa la revisión automática. */
+function revisarCaso(r, tapado) { return reglaAbandono(r, tapado) || reglaTecnologia(r); }
+
+function azar(n) {
+  var a = new Uint32Array(1); window.crypto.getRandomValues(a); return a[0] % n;
+}
+function barajar(arr) {
+  for (var i = arr.length - 1; i > 0; i--) { var j = azar(i + 1), x = arr[i]; arr[i] = arr[j]; arr[j] = x; }
+  return arr;
+}
+
+function asignar() {
+  var dias = diasElegidos(); if (!dias.length) return;
+  var aud = S.cargas.auditores, skills = Object.keys(S.cargas.skills), filas = S.archivo.filas;
+  var forzar = dias.some(function (d) { return S.cargas.fechasCargadas.indexOf(d) >= 0; });
+  var tapado = !!S.cargas.tapar;
+  // índices para las pistas de escalamiento
+  var porTel = {}, porCaso = {};
+  filas.forEach(function (r) {
+    var tel = r.tel.replace(/\s+/g, '');
+    if (tel) (porTel[tel] || (porTel[tel] = [])).push(r);
+    (porCaso[r.caso] || (porCaso[r.caso] = [])).push(r);
+  });
+  var skillDe = {};
+  skills.forEach(function (s) { skillDe[nrm(s)] = s; });
+  var casos = [], resumen = {}, avisos = [], sistema = [], universo = [], porRegla = {};
+  dias.forEach(function (d) {
+    resumen[d] = {};
+    // 1. revisión automática: todas las tipificaciones del día de los skills auditados.
+    //    Un caso con error claro queda auditado por el sistema (pestaña Sistema) y no se asigna a nadie.
+    var marcados = {};
+    filas.forEach(function (r) {
+      if (r.dia !== d || marcados[r.caso]) return;
+      var s = skillDe[nrm(r.cac)];
+      if (!s) return;
+      var x = revisarCaso(r, tapado);
+      if (!x) return;
+      marcados[r.caso] = 1;
+      porRegla[x.regla] = (porRegla[x.regla] || 0) + 1;
+      sistema.push({ fechaSabana: d, skill: s, caso: r.caso, regla: x.regla, detalle: x.detalle, ruta: rutaDe(r),
+        resolucion: r.res, comentario: r.com.slice(0, 6000), asesor: r.gestor, tipo: r.tipo });
+    });
+    // 2. reparto por skill de los casos que quedan, por turnos (si faltan casos, a nadie le toca de más)
+    skills.forEach(function (s) {
+      var vistos = {}, pool = [], total = 0, errores = 0;
+      filas.forEach(function (r) {
+        if (r.dia !== d || nrm(r.cac) !== nrm(s) || vistos[r.caso]) return;
+        vistos[r.caso] = 1; total++;
+        if (marcados[r.caso]) { errores++; return; }
+        pool.push(r);
+      });
+      resumen[d][s] = total;
+      barajar(pool);
+      var cupo = aud.map(function (a) { return a.cuotas[s] || 0; }), dados = aud.map(function () { return 0; }), i = 0, avanzo = true;
+      while (i < pool.length && avanzo) {
+        avanzo = false;
+        for (var j = 0; j < aud.length && i < pool.length; j++) {
+          if (dados[j] < cupo[j]) { casos.push(armarCaso(pool[i++], aud[j].nombre, d, s, porTel, porCaso)); dados[j]++; avanzo = true; }
+        }
+      }
+      var pedidos = cupo.reduce(function (x, y) { return x + y; }, 0);
+      if (pool.length < pedidos) avisos.push('En ' + s + ' del ' + fechaCorta(d) + ' solo había ' + pool.length + ' casos para asignar (se pedían ' + pedidos + ').');
+      universo.push({ fecha: d, skill: s, casos: total, errores: errores, asignados: dados.reduce(function (x, y) { return x + y; }, 0) });
+    });
+  });
+  var wf = filas.filter(function (r) { return dias.indexOf(r.dia) >= 0 && nrm(r.tipo) === 'wf' && r.tel; })
+    .map(function (r) { return { tel: r.tel.replace(/\s+/g, ''), fecha: r.fecha, caso: r.caso, skill: r.cac }; });
+  var revisados = universo.reduce(function (x, u) { return x + u.casos; }, 0);
+  var reglas = Object.keys(porRegla).map(function (k) { return porRegla[k] + ' de «' + k + '»'; }).join(', ');
+  var btn = $('dAsignar'); btn.disabled = true; btn.textContent = 'Revisando y asignando…';
+  protegerDatos(casos, wf, sistema)
+    .then(function () {
+      return api('api_cargar', S.ses, { archivo: S.archivo.nombre, fechas: dias, forzar: forzar, casos: casos, wf: wf, resumen: resumen,
+        sistema: sistema, universo: universo });
+    })
+    .then(function (r) {
+      var box = clear($('dResultado'));
+      box.appendChild(h('div', { cls: 'card pad resultado' },
+        h('b', { text: 'Listo: ' + r.asignados + ' casos asignados al equipo (' + r.fechas.map(fechaCorta).join(', ') + ').' }),
+        h('div', { style: 'margin-top:6px' }, 'Revisión automática: el sistema revisó ' + miles(revisados) + ' casos y marcó ',
+          h('span', { cls: 'txtrojo', text: sistema.length + ' con error' }), reglas ? ' (' + reglas + ')' : '',
+          sistema.length ? '. Quedan en la pestaña Sistema y no se asignaron a nadie.' : '.'),
+        h('ul', { style: 'margin:6px 0 0 18px;padding:0' }, Object.keys(r.porAuditor).map(function (n) { return h('li', { text: n + ': ' + r.porAuditor[n] + ' casos' }); })),
+        r.repetidos ? h('div', { cls: 'small', text: r.repetidos + ' casos ya estaban asignados y no se repitieron.' }) : null,
+        avisos.length ? h('div', { cls: 'small aviso', text: avisos.join(' ') }) : null));
+      toast('Casos revisados y asignados');
+      S.archivo = null; $('dFechas').classList.add('hidden'); $('dEstado').textContent = '';
+      cargarEstado();
+      api('api_bandeja', S.ses).then(aplicarBandeja);
+    })
+    .catch(function (e) { toast(errMsg(e), true); })
+    .then(function () { btn.textContent = 'Asignar casos'; if (S.archivo) planCarga(); });
+}
+function armarCaso(r, auditor, dia, skill, porTel, porCaso) {
+  var p = pistasDe(r);
+  var multi = (porCaso[r.caso] || []).length;
+  if (multi > 1) p.push('Este caso tiene ' + multi + ' tipificaciones en la sábana; aquí se audita esta ruta.');
+  var c = { auditor: auditor, fechaSabana: dia, skill: skill, caso: r.caso, fechaCaso: r.fecha, tipo: r.tipo, tel: r.tel,
+    canal: r.canal, tema: r.tema, ruta: rutaDe(r), resolucion: r.res,
+    asesor: r.gestor, comentario: r.com.slice(0, 6000), cierre: '', pistas: p.map(function (x) { return '• ' + x; }).join('\n'), escal: false };
+  if (nrm(r.tipo) === 'wf' && r.cierre.trim() && r.cierre.trim() !== r.com.trim()) c.cierre = r.cierre.slice(0, 3000);
+  if (nrm(r.tipo) === 'unidad' && tiene(r.com, ['escal'])) {
+    var tel = r.tel.replace(/\s+/g, ''), prev = (porTel[tel] || []).filter(function (x) { return x.fecha < r.fecha && x.caso !== r.caso; });
+    c.escal = true; c.prevArchivo = prev.length;
+    c.wfPrev = prev.filter(function (x) { return nrm(x.tipo) === 'wf'; }).map(function (x) { return x.caso; });
+  }
+  return c;
+}
+
+/* ============================== eventos ============================== */
+$('lBtn').addEventListener('click', entrarPin);
+$('lPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrarPin(); });
+$('uSalir').addEventListener('click', function () { salir(''); });
+document.querySelectorAll('.tab').forEach(function (t) { t.addEventListener('click', function () { ir(t.dataset.v); }); });
+$('bRecargar').addEventListener('click', cargarBandeja);
+$('bSiguiente').addEventListener('click', function () { if (S.bandeja.length) abrirCaso(S.bandeja[0].id, 'bandeja'); });
+$('cVolver').addEventListener('click', function () { ir(S.origen); });
+$('cGuardar').addEventListener('click', function () { guardar(false); });
+$('cGuardarSig').addEventListener('click', function () { guardar(true); });
+['iPatron', 'iRuta', 'iObs'].forEach(function (id) { $(id).addEventListener('input', validarForm); $(id).addEventListener('change', validarForm); });
+document.querySelectorAll('#pPeriodo button').forEach(function (b) { b.addEventListener('click', function () { S.periodo = b.dataset.p; cargarPanel(); }); });
+document.querySelectorAll('#sPeriodo button').forEach(function (b) { b.addEventListener('click', function () { S.periodoSis = b.dataset.p; cargarSistema(); }); });
+// ayudas: al pasar el cursor (o al llegar con el teclado) por algo que tiene data-tip
+document.addEventListener('mouseover', function (e) {
+  var el = e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+  if (el) mostrarAyuda(el); else ocultarAyuda();
+});
+document.addEventListener('focusin', function (e) {
+  var el = e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+  if (el) mostrarAyuda(el);
+});
+document.addEventListener('focusout', ocultarAyuda);
+document.documentElement.addEventListener('mouseleave', ocultarAyuda);
+window.addEventListener('scroll', ocultarAyuda, true);
+$('dArchivo').addEventListener('change', function () { if (this.files[0]) leerArchivo(this.files[0]); this.value = ''; });
+var zona = $('dZona');
+['dragenter', 'dragover'].forEach(function (ev) { zona.addEventListener(ev, function (e) { e.preventDefault(); zona.classList.add('on'); }); });
+['dragleave', 'drop'].forEach(function (ev) { zona.addEventListener(ev, function (e) { e.preventDefault(); zona.classList.remove('on'); }); });
+zona.addEventListener('drop', function (e) { var f = e.dataTransfer.files[0]; if (f) leerArchivo(f); });
+$('dAsignar').addEventListener('click', asignar);
+iniciar();
+</script>
+</body>
+</html>
