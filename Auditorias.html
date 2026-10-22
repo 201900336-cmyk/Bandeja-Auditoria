@@ -3,6 +3,8 @@
 <head>
 <base target="_top">
 <meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
 <title>Bandeja de auditoría · Qflow</title>
 <style>
 :root{
@@ -138,37 +140,64 @@ details.crit li{margin:3px 0}
 .login h1{font-size:22px;margin-bottom:4px}
 .login .fld{margin-top:14px}
 .err{color:var(--bad);font-weight:600;min-height:20px;margin-top:10px}
-/* entrada: oscura con rojo, como el dashboard */
-.entrada{position:fixed;inset:0;overflow:auto;z-index:30;display:flex;align-items:center;justify-content:center;padding:24px 16px;
-  background:radial-gradient(1100px 700px at 8% 12%,rgba(165,15,21,.55),transparent 60%),radial-gradient(900px 600px at 92% 95%,rgba(90,0,0,.35),transparent 60%),#0b0b0c}
-.entrada:before{content:"";position:fixed;inset:0;pointer-events:none;
-  background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:44px 44px}
-.ecard{position:relative;width:100%;max-width:420px;background:rgba(20,20,22,.92);border:1px solid rgba(255,255,255,.09);border-radius:18px;
-  padding:34px 30px 26px;text-align:center;color:#f2f2f2;box-shadow:0 30px 80px rgba(0,0,0,.55)}
-.epill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:4px 12px;
-  font-size:10.5px;font-weight:800;letter-spacing:1.4px;color:#e6e6e6}
-.epill i{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
-.eicono{width:86px;height:86px;margin:20px auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(circle at 35% 30%,#ff4a3d,#c8102e 60%,#8f0b12);box-shadow:0 0 0 7px rgba(218,41,28,.13),0 0 0 14px rgba(255,255,255,.03),0 12px 36px rgba(218,41,28,.5)}
-.ecc{font-size:11px;font-weight:800;letter-spacing:2.2px;color:#d9d9d9}
-.ecard h1{font-size:25px;font-weight:800;color:#fff;margin:10px 0 4px;letter-spacing:.2px}
-.esub{font-size:11.5px;font-weight:700;letter-spacing:2px;color:#9a9a9a}
-.elinea{width:46px;height:3px;border-radius:2px;background:var(--accent);margin:16px auto 20px}
-.ebtn{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(180deg,#e8261b,#c8102e);color:#fff;text-decoration:none;
-  font-weight:800;font-size:15px;border-radius:999px;padding:14px 28px;box-shadow:0 10px 28px rgba(218,41,28,.45);cursor:pointer;border:0}
-.ebtn:hover{filter:brightness(1.08)}
+/* entrada: un caso en plena auditoría (ficha, P1–P4 y el sello) */
+.entrada{--papel:#e9e9ea;--tinta:#000;--lapiz:#68686d;--linea:#cdcdd1;--rojo:#da291c;--rojo2:#8e0f14;
+  position:fixed;inset:0;overflow:auto;z-index:30;background:var(--papel);color:var(--tinta);
+  font-family:Archivo,"Segoe UI",Roboto,Arial,sans-serif;display:grid;grid-template-rows:auto 1fr}
+.emarca{display:flex;align-items:center;gap:10px;padding:22px clamp(16px,5vw,64px);font-weight:700;font-size:15px}
+.emarca i{width:26px;height:26px;border-radius:6px;background:var(--rojo);display:grid;place-items:center}
+.ecuerpo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(24px,5vw,80px);align-items:center;
+  padding:8px clamp(16px,5vw,64px) 48px;max-width:1240px;width:100%;margin:0 auto}
+@media (max-width:900px){.ecuerpo{grid-template-columns:1fr}.efichas{order:2}}
+.etexto h1{font-stretch:118%;font-weight:900;font-size:clamp(40px,6vw,76px);line-height:.95;letter-spacing:-.02em;margin:0 0 22px}
+.etexto h1 .h-negro{color:var(--tinta)} .etexto h1 .h-gris{color:#8a8a8f} .etexto h1 .h-rojo{color:var(--rojo)}
+.etexto p{font-size:18px;line-height:1.5;color:#2c2c2e;max-width:30em;margin:0 0 30px}
+.ebtn{display:inline-flex;align-items:center;gap:12px;background:var(--tinta);color:#fff;text-decoration:none;border:0;cursor:pointer;
+  font:700 17px/1 Archivo,"Segoe UI",sans-serif;padding:18px 26px;border-radius:8px;box-shadow:0 0 0 0 var(--rojo);transition:box-shadow .15s,transform .15s}
+.ebtn:hover{box-shadow:6px 6px 0 0 var(--rojo);transform:translate(-2px,-2px)}
+.ebtn:focus-visible{outline:3px solid var(--rojo);outline-offset:3px}
 .ebtn.disabled{opacity:.45;pointer-events:none}
-.enota{font-size:12px;color:#9a9a9a;margin-top:12px}
-.ecargando{font-size:13px;color:#bdbdbd;margin:8px 0}
-.entrada .err{color:#ff6b61;font-size:13px}
-.entrada .fld{text-align:left;margin-top:12px}
-.entrada .fld label{color:#cfcfcf;font-size:13px}
-.entrada select,.entrada input{background:#1b1b1e;border:1px solid #38383d;color:#f2f2f2;border-radius:10px}
-.entrada .btn{background:#2a2a2e;border-color:#3a3a40;color:#fff}
-.entrada .btn.primary{background:var(--accent);border-color:var(--accent)}
-.entrada details{color:#a8a8a8;text-align:left}
-.entrada code{color:#e6e6e6}
-.epin{border-top:1px solid rgba(255,255,255,.08);margin-top:22px;padding-top:6px}
+.enota{font-size:14px;color:var(--lapiz);margin-top:16px;max-width:34em}
+.ecargando{font-size:15px;color:var(--lapiz);margin:6px 0 14px}
+.entrada .err{color:var(--rojo2);font-size:14.5px;max-width:34em}
+.entrada .fld{margin-top:12px;max-width:340px}
+.entrada .fld label{font-size:14px}
+.entrada select,.entrada input{background:#fff;border:1px solid var(--linea);border-radius:8px}
+.entrada details{color:var(--lapiz);margin-top:22px;max-width:34em}
+.epin{border-top:1px solid var(--linea);margin-top:26px;padding-top:4px;max-width:340px}
+/* la ficha del caso */
+.efichas{position:relative;justify-self:center;width:min(100%,520px);padding:26px 18px 34px}
+.efichas:before{content:"";position:absolute;inset:44px 0 10px 36px;background:#d6d6d9;border-radius:6px;transform:rotate(3.2deg)}
+.eficha{position:relative;background:#fff;border-radius:6px;padding:24px 26px 22px;transform:rotate(-1.4deg);
+  box-shadow:0 1px 0 #cfcfd2,0 18px 40px -18px rgba(0,0,0,.35)}
+.ecaso{display:flex;justify-content:space-between;gap:12px;font-size:13.5px;color:var(--lapiz)}
+.ecaso b{color:var(--tinta)}
+.eruta{font-stretch:105%;font-weight:800;font-size:19px;margin:10px 0 12px;line-height:1.25}
+.ecom{font-size:14.5px;line-height:1.5;color:#2c2c2e;border-left:3px solid var(--linea);padding:2px 0 2px 12px;margin:0 0 16px}
+.ecom mark{background:none;color:inherit;box-shadow:inset 0 -.45em 0 rgba(218,41,28,.22)}
+.epreg{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center;font-size:14px}
+.epreg span:nth-child(odd){color:#2c2c2e}
+.eresp{display:inline-flex;border:1px solid var(--linea);border-radius:6px;overflow:hidden;font-size:12.5px;font-weight:700}
+.eresp i{font-style:normal;padding:4px 9px;color:var(--lapiz)}
+.eresp i+i{border-left:1px solid var(--linea)}
+.eresp i.si{background:var(--tinta);color:#fff}
+.eresp i.no{background:var(--rojo);color:#fff}
+.eres{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;padding-top:14px;border-top:1px dashed var(--linea);min-height:74px}
+.eres>span{font-size:13.5px;color:var(--lapiz)}
+.esello{transform:rotate(-7deg);pointer-events:none;border:4px solid var(--rojo);border-radius:8px;padding:8px 16px 7px;color:var(--rojo);
+  text-align:center;font-stretch:75%;font-weight:900;font-size:30px;line-height:.95;letter-spacing:.02em;text-transform:uppercase;
+  box-shadow:inset 0 0 0 2px rgba(218,41,28,.18)}
+.esello small{display:block;font-size:12.5px;font-stretch:100%;font-weight:700;letter-spacing:0;text-transform:none;margin-top:5px}
+.eficha{transition:transform .55s cubic-bezier(.3,.7,.2,1),opacity .45s}
+.eficha.sale{transform:translateX(-70px) rotate(-7deg);opacity:0}
+.eficha.entra{transform:translateX(70px) rotate(5deg);opacity:0;transition:none}
+.eresp i{transition:background .18s,color .18s}
+.esello.bien{border-color:var(--tinta);color:var(--tinta);box-shadow:inset 0 0 0 2px rgba(0,0,0,.12)}
+.esello.gris{border-color:var(--lapiz);color:var(--lapiz);font-size:24px;box-shadow:inset 0 0 0 2px rgba(0,0,0,.08)}
+.anim .esello{opacity:0}
+.anim .esello.cae{animation:eSello .42s cubic-bezier(.2,1.6,.4,1) both}
+.econt{font-variant-numeric:tabular-nums}
+@keyframes eSello{from{opacity:0;transform:rotate(-20deg) scale(1.9)}to{opacity:1;transform:rotate(-7deg) scale(1)}}
 /* carga */
 .drop{border:2px dashed #bdbdbd;border-radius:10px;padding:22px;text-align:center;background:#fafafa}
 .drop.on{border-color:var(--accent);background:var(--accent-soft)}
@@ -222,34 +251,44 @@ td.rojo{color:var(--accent);font-weight:700}
 
 <!-- ACCESO -->
 <section id="vLogin" class="entrada">
-  <div class="ecard">
-    <div class="epill"><i></i>AUDITORÍA DE CALIDAD</div>
-    <div class="eicono" aria-hidden="true">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="m8.5 13 2.4 2.4 4.6-4.9"/></svg>
+  <div class="emarca"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></i>Calidad Qflow</div>
+  <div class="ecuerpo">
+    <div class="etexto">
+      <h1><span class="h-negro">Bandeja</span> <span class="h-gris">de</span> <span class="h-rojo">Auditoría</span></h1>
+      <p>Aquí revisas las tipificaciones que te tocan cada día: si la ruta es el motivo real, si la resolución y el cierre cuadran y si el comentario está completo.</p>
+      <div id="lCargando" class="ecargando"><span class="loading"></span> <span id="lCargandoTxt">Preparando el acceso…</span></div>
+      <div id="lGenesys" class="hidden">
+        <a id="lGenLink" class="ebtn" href="#" target="_top">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h1Zm2 0h6V7a3 3 0 0 0-6 0v3Z"/></svg>
+          Entrar con Genesys</a>
+        <div class="enota">Con el mismo usuario de Genesys Cloud con el que trabajas. Si no te deja entrar, avísale a tu supervisor.</div>
+      </div>
+      <div id="lPinBox" class="hidden">
+        <div class="epin"><div id="lPinTitulo" class="enota" style="font-weight:700">O con tu PIN</div></div>
+        <div class="fld"><label for="lNombre">Tu nombre</label><select id="lNombre"></select></div>
+        <div class="fld"><label for="lPin">PIN</label>
+          <input id="lPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="4 dígitos"></div>
+        <div style="margin-top:14px"><button id="lBtn" class="btn">Entrar con PIN</button></div>
+      </div>
+      <div id="lErr" class="err"></div>
+      <details id="lAyuda" class="small hidden"><summary>Ayuda para el supervisor</summary>
+        <div style="margin-top:6px">Esta dirección tiene que estar autorizada como «redirect URI» en el cliente OAuth de Genesys:</div>
+        <code id="lRedirect" style="word-break:break-all"></code></details>
     </div>
-    <div class="ecc">CENTRO DE CONTACTO</div>
-    <h1>Bandeja de Auditoría</h1>
-    <div class="esub">TIPIFICACIONES QFLOW</div>
-    <div class="elinea"></div>
-    <div id="lCargando" class="ecargando"><span class="loading"></span> <span id="lCargandoTxt">Preparando el acceso…</span></div>
-    <div id="lGenesys" class="hidden">
-      <a id="lGenLink" class="ebtn" href="#" target="_top">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="#ffd27a" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h1Zm2 0h6V7a3 3 0 0 0-6 0v3Z"/></svg>
-        Iniciar sesión con Genesys <span aria-hidden="true">›</span></a>
-      <div class="enota">Con su usuario de Genesys Cloud, el mismo del dashboard.</div>
+    <div class="efichas" aria-hidden="true">
+      <div class="eficha" id="eFicha">
+        <div class="ecaso"><span>Caso de ejemplo <b class="econt" id="eNum">1 de 15</b></span><span id="eSkill">Nivel 1 Multimedia</span></div>
+        <div class="eruta" id="eRuta">Reclamos › Avería › TV HFC › Sin señal</div>
+        <p class="ecom" id="eCom">Tecnología: <mark>DTH</mark>. Problema reportado: no tiene señal en la TV. Se revisa decodificador y se genera avería.</p>
+        <div class="epreg" id="ePreg">
+          <span>P1 · ¿La ruta es el motivo real?</span><span class="eresp"><i>Sí</i><i class="no">No</i><i>Duda</i></span>
+          <span>P2 · ¿La resolución es lo que hizo?</span><span class="eresp"><i class="si">Sí</i><i>No</i><i>Duda</i></span>
+          <span>P3 · ¿El cierre es correcto?</span><span class="eresp"><i class="si">Sí</i><i>No</i><i>Duda</i></span>
+          <span>P4 · ¿El comentario está completo?</span><span class="eresp"><i class="si">Sí</i><i>No</i><i>Duda</i></span>
+        </div>
+        <div class="eres"><span>Resultado</span><div class="esello" id="eSello">Mal tipificado<small>DTH en ruta de HFC</small></div></div>
+      </div>
     </div>
-    <div id="lPinBox" class="hidden">
-      <div class="epin"><div id="lPinTitulo" class="enota" style="font-weight:700">O con su PIN</div></div>
-      <div class="fld"><label for="lNombre">Su nombre</label><select id="lNombre"></select></div>
-      <div class="fld"><label for="lPin">PIN</label>
-        <input id="lPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="4 dígitos"></div>
-      <div style="margin-top:14px"><button id="lBtn" class="btn">Entrar con PIN</button></div>
-    </div>
-    <div id="lErr" class="err"></div>
-    <details id="lAyuda" class="small hidden" style="margin-top:12px"><summary>Ayuda para el supervisor</summary>
-      <div style="margin-top:6px">Esta dirección tiene que estar autorizada como «redirect URI» en el cliente OAuth de Genesys (el mismo del dashboard):</div>
-      <code id="lRedirect" style="word-break:break-all"></code></details>
   </div>
 </section>
 
@@ -702,6 +741,7 @@ function iniciar() {
 }
 function mostrarLogin(msg) {
   $('vApp').classList.add('hidden'); $('vLogin').classList.remove('hidden');
+  animarEntrada();
   $('lErr').textContent = msg || '';
   $('lCargandoTxt').textContent = 'Preparando el acceso…';
   $('lCargando').classList.remove('hidden');
@@ -734,16 +774,62 @@ function mostrarLogin(msg) {
     if (conGenesys) refrescoGenesys = setTimeout(function () { if (!S.user) mostrarLogin($('lErr').textContent); }, 15 * 60 * 1000);
   }).catch(function (e) { $('lCargando').classList.add('hidden'); $('lErr').textContent = errMsg(e); });
 }
+/* entrada: la ficha de ejemplo va auditando casos (P1 a P4, sello del resultado, siguiente caso) */
+var FICHAS = [
+  { skill: 'Nivel 1 Multimedia', ruta: 'Reclamos › Avería › TV HFC › Sin señal', r: ['No', 'Sí', 'Sí', 'Sí'], tipo: '', sello: 'Mal tipificado', por: 'DTH en ruta de HFC',
+    com: 'Tecnología: <mark>DTH</mark>. Problema reportado: no tiene señal en la TV. Se revisa decodificador y se genera avería.' },
+  { skill: 'Call Center Móvil', ruta: 'Reclamos › Móvil › Datos móviles › Sin navegación', r: ['Sí', 'Sí', 'Sí', 'Sí'], tipo: 'bien', sello: 'Bien', por: 'Ruta, resolución y cierre correctos',
+    com: 'Cliente no navega con datos móviles. Se configura el APN y queda navegando.' },
+  { skill: 'Nivel 1 Multimedia', ruta: 'Trámites cortos › Información › Llamada no efectiva', r: ['No', 'Sí', 'Sí', 'Sí'], tipo: '', sello: 'Mal tipificado', por: 'Dijo el motivo y quedó como corte',
+    com: 'Problema reportado: <mark>no tiene internet</mark> desde ayer. Cliente corta la llamada.' },
+  { skill: 'Call Center Móvil', ruta: 'Consultas › Móvil › Saldo › Consulta de saldo', r: ['Sí', 'Sí', 'Sí', 'No'], tipo: 'gris', sello: 'Bien, comentario incompleto', por: 'Falta qué se le informó',
+    com: 'Consulta saldo.' }
+];
+var PREG_CORTA = ['P1 · ¿La ruta es el motivo real?', 'P2 · ¿La resolución es lo que hizo?', 'P3 · ¿El cierre es correcto?', 'P4 · ¿El comentario está completo?'];
+var eAnim = { t: [], n: 0, activa: false };
+function animarEntrada() {
+  if (eAnim.activa || !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  eAnim.activa = true;
+  document.querySelector('.efichas').classList.add('anim');
+  var luego = function (ms, f) { eAnim.t.push(setTimeout(f, ms)); };
+  var ciclo = function () {
+    var f = FICHAS[eAnim.n % FICHAS.length], ficha = $('eFicha');
+    $('eNum').textContent = (eAnim.n % 15 + 1) + ' de 15';
+    $('eSkill').textContent = f.skill; $('eRuta').textContent = f.ruta; $('eCom').innerHTML = f.com;
+    var preg = clear($('ePreg'));
+    PREG_CORTA.forEach(function (q) {
+      preg.appendChild(h('span', { text: q }));
+      preg.appendChild(h('span', { cls: 'eresp' }, h('i', { text: 'Sí' }), h('i', { text: 'No' }), h('i', { text: 'Duda' })));
+    });
+    var sello = $('eSello');
+    sello.className = 'esello ' + f.tipo; clear(sello).appendChild(document.createTextNode(f.sello));
+    sello.appendChild(h('small', { text: f.por }));
+    ficha.classList.add('entra'); void ficha.offsetWidth; ficha.classList.remove('entra', 'sale');
+    f.r.forEach(function (resp, i) {
+      luego(700 + i * 380, function () {
+        var op = preg.querySelectorAll('.eresp')[i].children[resp === 'Sí' ? 0 : resp === 'No' ? 1 : 2];
+        op.className = resp === 'No' ? 'no' : 'si';
+      });
+    });
+    luego(2500, function () { sello.classList.add('cae'); });
+    luego(5600, function () { ficha.classList.add('sale'); });
+    luego(6150, function () { eAnim.n++; ciclo(); });
+  };
+  ciclo();
+}
+function pararEntrada() {
+  eAnim.t.forEach(clearTimeout); eAnim.t = []; eAnim.activa = false;
+}
 function entrarPin() {
   var nombre = $('lNombre').value, pin = $('lPin').value.trim();
-  if (!nombre || !pin) { $('lErr').textContent = 'Elija su nombre y escriba su PIN.'; return; }
+  if (!nombre || !pin) { $('lErr').textContent = 'Elige tu nombre y escribe tu PIN.'; return; }
   $('lBtn').disabled = true; $('lErr').textContent = '';
   api('api_loginPin', nombre, pin).then(function (r) { guardarSesion(r.sesion); abrirApp(r.sesion, r.perfil); })
     .catch(function (e) { $('lErr').textContent = errMsg(e); })
     .then(function () { $('lBtn').disabled = false; });
 }
 function abrirApp(ses, u) {
-  clearTimeout(refrescoGenesys);
+  clearTimeout(refrescoGenesys); pararEntrada();
   S.ses = ses; S.user = u; S.hoy = u.hoy;
   $('vLogin').classList.add('hidden'); $('vApp').classList.remove('hidden');
   $('uNombre').textContent = u.nombre + (u.rol === 'SUPERVISOR' && !/supervisor/i.test(u.nombre) ? ' · supervisor' : '');
