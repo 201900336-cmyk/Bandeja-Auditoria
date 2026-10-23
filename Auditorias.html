@@ -495,6 +495,15 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
           <div class="scroll" style="margin-top:8px"><table id="tCuotas"></table></div>
           <h3 style="margin-top:16px">Últimas cargas</h3>
           <div class="scroll" style="margin-top:6px"><table id="tCargas"></table></div>
+          <div id="bBorrar" class="hidden" style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
+            <h3>Borrar un día<span class="ayuda" data-tip="AYUDA:borrarDia">?</span></h3>
+            <div class="small muted">Si una sábana se subió mal: borra todo lo de ese día para volver a subirla.</div>
+            <div class="acciones" style="justify-content:flex-start">
+              <select id="bFecha" aria-label="Fecha que se va a borrar"></select>
+              <button class="btn" id="bContar">Borrar este día</button>
+            </div>
+            <div id="bConfirma"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -611,9 +620,9 @@ function rutaDe(r) { return [r.mercado, r.n2, r.n3, r.n4].filter(function (x) { 
 /* Qué es cada columna o campo, qué hay que llenar y por qué. Se usan con data-tip="AYUDA:clave". */
 var AYUDA = {
   aRes: 'Resultado de P1 a P4.',
-  aQuien: 'Quien hizo la auditoría (aunque el caso sea de otro compañero).',
+  aQuien: 'Quien hizo la auditoría (aunque el caso sea de otro compañero). «Sistema» son los que marcó la revisión automática antes de asignar.',
   aFecha: 'Cuándo se guardó la auditoría.',
-  actividad: 'Las auditorías del período, de la más reciente a la más vieja, como en el Excel.\nToque una fila para abrir el caso y darle una segunda revisada. Una auditoría solo la cambia quien la hizo o el supervisor.',
+  actividad: 'Las auditorías del período del equipo y los no procedentes que marcó el sistema (sale «Sistema» en «Auditado por»), de lo más reciente a lo más viejo, como en el Excel.\nToque una fila para abrir el caso y darle una segunda revisada. Una auditoría solo la cambia quien la hizo o el supervisor.',
   asesoresNP: 'No procedentes del sistema + no procedentes del equipo, por asesor.',
   frecuentes: 'Motivos de no procedente que encontró el equipo y reglas del sistema, juntos.',
   porRegla: 'Cuántos no procedentes encontró cada regla automática. «Pasados a procedente» son los que el supervisor revisó y marcó «Es procedente»: no cuentan.',
@@ -691,6 +700,7 @@ var AYUDA = {
   cSkillCuota: 'Casos de este skill que recibe cada día.',
   cTotal: 'Casos por día en total.',
   cSabana: 'Fecha de la sábana cargada.',
+  borrarDia: 'Solo el supervisor. Elijan la fecha y toquen «Borrar este día»: primero dice cuánto se va a borrar y pide confirmar.\nSe borra todo lo de esa fecha: los casos asignados (también los ya auditados), los no procedentes del Sistema, los totales del Dashboard y el registro de la carga.\nDespués esa sábana se puede subir de nuevo. No se puede deshacer.',
   cCargada: 'Cuándo se cargó y quién la cargó.',
   cCasos: 'Casos de esa fecha que se asignaron al equipo.',
   fFecha: 'Fecha que trae la sábana. Se marca sola la más reciente que no se ha cargado.',
@@ -1123,7 +1133,7 @@ function cargarPanel() {
   Promise.all([api('api_panel', S.ses, S.periodo), ant ? api('api_panel', S.ses, 'mes:' + ant) : Promise.resolve(null)])
     .then(function (x) { pintarPanel(x[0], x[1], ant); }).catch(function (e) { toast(errMsg(e), true); });
   setCargando($('tActividad'), 8);
-  api('api_actividad', S.ses, S.periodo).then(function (r) { S.actividad = r.casos; S.actividadTotal = r.total; pintarActividad(); })
+  api('api_actividad', S.ses, S.periodo).then(function (r) { S.actividad = r.casos; S.actividadTotal = r.total; S.actividadSis = r.sistema || []; S.actividadSisTotal = r.totalSistema || 0; pintarActividad(); })
     .catch(function (e) { toast(errMsg(e), true); });
 }
 function tile(color, lbl, tip, val, subs, x) {
@@ -1301,21 +1311,40 @@ function nombreRes(res) {
 }
 
 /* lo que va auditando el equipo (abajo del Dashboard) */
+var SISTEMA = 'Sistema';
 function pintarActividad() {
-  var lista = S.actividad || [], quien = $('aQuien'), antes = quien.value;
+  var lista = S.actividad || [], sis = S.actividadSis || [], quien = $('aQuien'), antes = quien.value;
+  // los casos del equipo y los que marcó el sistema, juntos y del más reciente al más viejo
+  var filas = lista.map(function (c) { return { c: c, f: c.fechaAud || '', quien: c.auditadoPor || c.auditor }; })
+    .concat(sis.map(function (x) { return { x: x, f: x.registrado || '', quien: SISTEMA }; }));
+  filas.sort(function (a, b) { return a.f < b.f ? 1 : a.f > b.f ? -1 : 0; });
   var nombres = {};
   lista.forEach(function (c) { nombres[c.auditadoPor || c.auditor] = 1; });
-  clear(quien).appendChild(h('option', { value: '', text: 'Todos' }));
+  clear(quien).appendChild(h('option', { value: '', text: 'Todos (equipo y sistema)' }));
+  quien.appendChild(h('option', { value: SISTEMA, text: 'Sistema (revisión automática)' }));
   Object.keys(nombres).sort().forEach(function (n) { quien.appendChild(h('option', { value: n, text: n })); });
-  if (antes && nombres[antes]) quien.value = antes;
+  if (antes && (nombres[antes] || antes === SISTEMA)) quien.value = antes;
   var fq = quien.value, fr = $('aRes').value;
-  var ver = lista.filter(function (c) { return (!fq || (c.auditadoPor || c.auditor) === fq) && (!fr || tipoRes(c.resultado) === fr); });
+  var ver = filas.filter(function (o) { return (!fq || o.quien === fq) && (!fr || tipoRes(o.c ? o.c.resultado : o.x.resultado) === fr); });
   var t = clear($('tActividad'));
   t.appendChild(h('tr', null, th('Auditado', 'aFecha'), th('Auditado por', 'aQuien'), th('Caso', 'caso'), th('Asesor', 'asesor'),
     th('Ruta tipificada', 'ruta'), th('Resultado', 'aRes'), th('Motivo / ruta correcta', 'patronRuta'), th('Observación', 'observacion')));
-  if (!ver.length) t.appendChild(h('tr', null, h('td', { colspan: 8, cls: 'muted', text: lista.length ? 'Nada con esos filtros.' : 'Todavía no hay auditorías en este período.' })));
-  ver.forEach(function (c) {
-    var r = calcular(c), otro = c.auditadoPor && nrm(c.auditadoPor) !== nrm(c.auditor);
+  if (!ver.length) t.appendChild(h('tr', null, h('td', { colspan: 8, cls: 'muted', text: filas.length ? 'Nada con esos filtros.' : 'Todavía no hay auditorías en este período.' })));
+  ver.forEach(function (o) {
+    if (o.x) {   // marcado por el sistema
+      var x = o.x, np = x.resultado === 'NO PROCEDENTE';
+      t.appendChild(h('tr', { cls: 'click', on: { click: function () { abrirSistemaDesde(x); } } },
+        h('td', { text: fechaCorta(x.registrado) }),
+        h('td', null, h('b', { text: SISTEMA }), h('div', { cls: 'small muted', text: 'revisión automática' })),
+        h('td', null, h('b', { text: x.caso }), h('div', null, chipSkill(x.skill))),
+        h('td', { text: x.asesor }),
+        h('td', null, h('div', { cls: 'trunc ruta', text: x.ruta, title: x.ruta }), h('div', { cls: 'small muted trunc', text: x.resolucion })),
+        h('td', null, h('span', { cls: 'pill ' + (np ? 'MAL' : 'BIEN'), text: np ? 'No procedente' : 'Procedente' })),
+        h('td', null, h('div', { text: x.regla }), h('div', { cls: 'small muted', style: 'max-width:320px', text: x.detalle })),
+        h('td', null, h('div', { cls: 'small', style: 'max-width:280px', text: x.revision ? x.revision + ' · ' + x.revisadoPor + (x.obsRevision ? ': ' + x.obsRevision : '') : '' }))));
+      return;
+    }
+    var c = o.c, r = calcular(c), otro = c.auditadoPor && nrm(c.auditadoPor) !== nrm(c.auditor);
     t.appendChild(h('tr', { cls: 'click', on: { click: function () { abrirCaso(c.id, 'actividad'); } } },
       h('td', { text: fechaCorta(c.fechaAud) }),
       h('td', null, h('b', { text: c.auditadoPor || c.auditor }), otro ? h('div', { cls: 'small muted', text: 'en la bandeja de ' + c.auditor }) : null),
@@ -1326,9 +1355,14 @@ function pintarActividad() {
       h('td', null, h('div', { text: c.patron || '' }), h('div', { cls: 'small muted', text: c.rutaCorrecta || '' })),
       h('td', null, h('div', { cls: 'small', style: 'max-width:280px', text: c.observacion || '' }))));
   });
-  $('aNota').textContent = (S.actividadTotal > lista.length ? 'Se ven las ' + lista.length + ' más recientes de ' + miles(S.actividadTotal) + '. Todas salen en «Descargar Excel». ' : '') +
+  var mas = [];
+  if (S.actividadTotal > lista.length) mas.push('las ' + lista.length + ' auditorías más recientes de ' + miles(S.actividadTotal));
+  if (S.actividadSisTotal > sis.length) mas.push('los ' + sis.length + ' casos del sistema más recientes de ' + miles(S.actividadSisTotal));
+  $('aNota').textContent = (mas.length ? 'Se ven ' + mas.join(' y ') + '. Todo sale en «Descargar Excel». ' : '') +
     'Toque una fila para abrir el caso y darle una segunda revisada.';
 }
+/** Desde el Dashboard: abre el caso del sistema en la pestaña Sistema. */
+function abrirSistemaDesde(x) { S.verSis = x; ir('sistema'); }
 
 function descargarExcel() {
   var b = $('pExcel'); b.disabled = true; b.textContent = 'Preparando…';
@@ -1362,6 +1396,8 @@ function estadoSis(x) {
 }
 function pintarSistema() {
   var r = S.sis, t = clear($('tSistema'));
+  var pedido = S.verSis; S.verSis = null;   // caso que se abrió desde el Dashboard
+  if (pedido && !r.casos.some(function (c) { return c.id === pedido.id; })) r.casos.unshift(pedido);
   $('sNota').textContent = r.supervisor
     ? 'Toque un caso para revisarlo. Si el sistema se equivocó, márquelo «Es procedente» y escriba por qué: deja de contar y con eso se afinan las reglas.'
     : 'Toque un caso para ver el detalle. Si cree que el sistema se equivocó, avísele al supervisor: él lo puede marcar «Es procedente».';
@@ -1377,6 +1413,10 @@ function pintarSistema() {
       h('td', null, estadoSis(x))));
   });
   if (r.total > r.casos.length) t.appendChild(h('tr', null, h('td', { colspan: 7, cls: 'small muted', text: 'Se ven los ' + r.casos.length + ' más recientes de ' + r.total + '.' })));
+  if (pedido) {
+    verSistema(pedido.id);
+    $('sDetalle').scrollIntoView({ block: 'start' });
+  }
 }
 function verSistema(id) {
   var x = S.sis.casos.filter(function (c) { return c.id === id; })[0];
@@ -1451,8 +1491,46 @@ function cargarEstado() {
     r.ultimas.forEach(function (c) {
       g.appendChild(h('tr', null, h('td', { text: fechaCorta(c.fecha) }), h('td', null, fechaCorta(c.cargadaEl), h('div', { cls: 'small muted', text: c.por })), h('td', { cls: 'num', text: c.asignados })));
     });
+    pintarBorrar();
     if (S.archivo) pintarFechas();
   }).catch(function (e) { toast(errMsg(e), true); });
+}
+/* el supervisor borra un día cargado (si la sábana se subió mal) */
+function pintarBorrar() {
+  var sup = S.user && S.user.rol === 'SUPERVISOR', fechas = (S.cargas.fechasCargadas || []).slice().sort().reverse();
+  $('bBorrar').classList.toggle('hidden', !sup);
+  clear($('bConfirma'));
+  if (!sup) return;
+  var sel = clear($('bFecha'));
+  fechas.forEach(function (f, i) { sel.appendChild(h('option', { value: f, text: fechaCorta(f) })); });
+  if (!fechas.length) sel.appendChild(h('option', { value: '', text: 'No hay días cargados' }));
+  sel.disabled = $('bContar').disabled = !fechas.length;
+}
+function contarBorrar() {
+  var f = $('bFecha').value; if (!f) return;
+  var b = $('bContar'); b.disabled = true;
+  api('api_borrarDia', S.ses, f, false).then(function (r) {
+    var box = clear($('bConfirma'));
+    box.appendChild(h('div', { cls: 'card pad resultado', style: 'margin-top:10px;border-left:3px solid var(--accent)' },
+      h('b', { text: '¿Borrar todo lo del ' + fechaCorta(f) + '?' }),
+      h('ul', { style: 'margin:6px 0 0 18px;padding:0' },
+        h('li', { text: miles(r.casos) + ' casos asignados' + (r.auditados ? ', de ellos ' + miles(r.auditados) + ' ya auditados (esas auditorías se pierden)' : '') }),
+        h('li', { text: miles(r.sistema) + ' no procedentes del Sistema' }),
+        h('li', { text: 'Los totales del Dashboard y el registro de la carga de ese día' })),
+      h('div', { cls: 'small', style: 'margin-top:6px', text: 'No se puede deshacer. Después pueden volver a subir esa sábana.' }),
+      h('div', { cls: 'acciones', style: 'justify-content:flex-start' },
+        h('button', { cls: 'btn primary', id: 'bSi', text: 'Sí, borrar el ' + fechaCorta(f), on: { click: function () { borrarDia(f, this); } } }),
+        h('button', { cls: 'btn', text: 'Cancelar', on: { click: function () { clear(box); } } }))));
+  }).catch(function (e) { toast(errMsg(e), true); }).then(function () { b.disabled = false; });
+}
+function borrarDia(f, btn) {
+  btn.disabled = true; btn.textContent = 'Borrando…';
+  api('api_borrarDia', S.ses, f, true).then(function (r) {
+    toast('Listo: se borró el ' + fechaCorta(f) + ' (' + miles(r.casos) + ' casos y ' + miles(r.sistema) + ' del Sistema). Ya pueden volver a subir esa sábana.');
+    clear($('dResultado'));
+    cargarEstado();
+    api('api_bandeja', S.ses, S.como).then(aplicarBandeja);
+  }).catch(function (e) { toast(errMsg(e), true); btn.disabled = false; btn.textContent = 'Sí, borrar el ' + fechaCorta(f); });
 }
 
 function cargarXLSX() {
@@ -1933,6 +2011,8 @@ var zona = $('dZona');
 zona.addEventListener('drop', function (e) { var f = e.dataTransfer.files[0]; if (f) leerArchivo(f); });
 $('dAsignar').addEventListener('click', asignar);
 $('dCompletar').addEventListener('click', completarTapados);
+$('bContar').addEventListener('click', contarBorrar);
+$('bFecha').addEventListener('change', function () { clear($('bConfirma')); });
 iniciar();
 </script>
 </body>
