@@ -110,6 +110,21 @@ details.cierre summary{cursor:pointer;font-weight:600;color:var(--ink)}
 .fld{margin-bottom:10px}
 .fld label{display:block;font-weight:700;margin-bottom:4px}
 .fld .req{color:var(--bad);font-weight:700}
+.rchips{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+.rchip{display:flex;gap:8px;align-items:flex-start;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;line-height:1.35}
+.rchip span{flex:1}
+.rchip button{border:0;background:none;cursor:pointer;font-size:15px;line-height:1;color:var(--muted);padding:0 2px}
+.rchip button:hover{color:var(--bad)}
+.rbox{position:relative}
+.rlista{position:absolute;left:0;right:0;top:100%;z-index:30;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);max-height:300px;overflow:auto;margin-top:2px}
+.rlista div{padding:7px 10px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--soft);line-height:1.35}
+.rlista div:hover,.rlista div.on{background:var(--soft)}
+.rlista .vacio{color:var(--muted);cursor:default}
+.rsug{display:flex;flex-direction:column;gap:5px;margin-bottom:6px}
+.rsug .tit{font-size:12px;font-weight:700;color:var(--muted)}
+.rsug button{text-align:left;font:inherit;font-size:13px;background:#fff;border:1px dashed var(--accent);border-radius:8px;padding:6px 8px;cursor:pointer;color:var(--ink);line-height:1.35}
+.rsug button:hover{background:var(--accent-soft)}
+.rsug button b{color:var(--accent)}
 .fld select,.fld input,.fld textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff}
 .fld textarea{min-height:64px;resize:vertical}
 .fld.falta select,.fld.falta input,.fld.falta textarea{background:var(--req);border-color:var(--req-line)}
@@ -363,7 +378,11 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
           <div id="qs"></div>
           <div class="fld" id="fPatron"><label for="iPatron">Motivo del no procedente <span class="req hidden">*</span><span class="ayuda" data-tip="AYUDA:patron">?</span></label><select id="iPatron"></select></div>
           <div class="fld" id="fRuta"><label for="iRuta">Ruta correcta <span class="req hidden">*</span><span class="ayuda" data-tip="AYUDA:rutaCorrecta">?</span></label>
-            <input id="iRuta" maxlength="400" placeholder="Mercado › Nivel II › Nivel III › Nivel IV › Resolución"></div>
+            <div id="rSug" class="rsug hidden"></div>
+            <div id="rChips" class="rchips"></div>
+            <div class="rbox hidden" id="rBox"><input id="rBuscar" autocomplete="off" aria-label="Buscar la ruta correcta" placeholder="Busquen la ruta: por ejemplo «gpon no navega»"><div id="rLista" class="rlista hidden"></div></div>
+            <input id="iRuta" maxlength="1500" placeholder="Mercado › Nivel II › Nivel III › Nivel IV › Resolución">
+            <div id="rNota" class="small muted" style="margin-top:4px"></div></div>
           <div class="fld" id="fObs"><label for="iObs">Observación <span class="req hidden">*</span><span class="ayuda" data-tip="AYUDA:observacion">?</span></label>
             <textarea id="iObs" maxlength="1500" placeholder="Qué faltó, qué duda tiene o qué vio"></textarea></div>
           <div class="res"><span class="small muted">RESULTADO:<span class="ayuda" data-tip="AYUDA:resultado">?</span></span><span class="pill PEND" id="cPill">PENDIENTE</span><span class="small" id="cErr"></span></div>
@@ -495,6 +514,12 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
           <div class="scroll" style="margin-top:8px"><table id="tCuotas"></table></div>
           <h3 style="margin-top:16px">Últimas cargas</h3>
           <div class="scroll" style="margin-top:6px"><table id="tCargas"></table></div>
+          <div id="rQflow" class="hidden" style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
+            <h3>Rutas de Qflow<span class="ayuda" data-tip="AYUDA:rutasQflow">?</span></h3>
+            <div class="small muted" id="rQEstado">Lista de «Ruta correcta» por skill.</div>
+            <label class="btn" style="margin-top:8px;display:inline-block;cursor:pointer">Subir el árbol de rutas (.xlsx)
+              <input id="rQArchivo" type="file" accept=".xlsx,.xls" class="hidden"></label>
+          </div>
           <div id="bBorrar" class="hidden" style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
             <h3>Borrar un día<span class="ayuda" data-tip="AYUDA:borrarDia">?</span></h3>
             <div class="small muted">Si una sábana se subió mal: borra todo lo de ese día para volver a subirla.</div>
@@ -657,7 +682,8 @@ var AYUDA = {
   p3: '¿El cierre es correcto?\nUnidad = resuelto en la llamada. WF = escalado.\nNo: por ejemplo, dice que escaló y quedó en Unidad. Se pide el Motivo del no procedente.\nDuda: se pide una Observación.',
   p4: '¿El comentario está completo?\nSí: se entiende el motivo, qué se hizo y cómo terminó (con el número de avería u orden, si aplica).\nNo: falta algo de eso. No cambia la tipificación: el resultado queda «Procedente, comentario incompleto».',
   patron: 'Por qué el caso no procede. Se elige de la lista.\nEs obligatorio si contestó «No» en P1, P2 o P3.\nCon esto el Dashboard muestra los no procedentes más frecuentes para la retroalimentación.',
-  rutaCorrecta: 'La ruta que debió usar el asesor: Mercado › Nivel II › Nivel III › Nivel IV › Resolución.\nEs obligatoria si P1 o P2 es «No». Sirve para corregir al asesor.',
+  rutaCorrecta: 'La ruta que debió usar el asesor: Motivo › Categoría › Servicio › Tipificación › Resolución.\nEs obligatoria si P1 o P2 es «No». Sirve para corregir al asesor.\nEscriban unas palabras (por ejemplo «gpon no navega») y elijan de la lista: solo salen las rutas de Qflow del skill del caso (Fijo o Móvil) y las de «Información». Pueden elegir varias si el asesor pudo usar cualquiera de ellas; se quitan con la ✕.\n«Sugerida por el comentario»: el sistema leyó una palabra clave en el comentario. Solo es una ayuda: agréguenla únicamente si es la correcta.',
+  rutasQflow: 'Solo el supervisor. Suban el archivo del árbol de Qflow (hoja «Rutas Qflow» y hoja «Cruce», que dice de qué skill es cada servicio).\nCon eso se arma la lista de «Ruta correcta» de cada skill. Se guarda en la pestaña RUTAS de la hoja (no en la página).\nCuando Qflow cambie sus rutas, vuelvan a subir el archivo: se reemplaza la lista y no se toca ninguna auditoría.',
   observacion: 'Explique en pocas palabras lo que vio.\nEs obligatoria si marcó alguna «Duda» o si el patrón es «Otro», para que Calidad entienda el caso sin leerlo todo de nuevo.',
   resultado: 'Se calcula solo con las respuestas:\n• Algún «No» en P1, P2 o P3 = NO PROCEDENTE.\n• Alguna «Duda» = CONSULTAR A CALIDAD (no cuenta en los %).\n• Solo P4 en «No» = PROCEDENTE, COMENTARIO INCOMPLETO.\n• Todo «Sí» = PROCEDENTE.',
   auditado: 'Fecha en que guardó la auditoría. Toque la fila para abrirla y corregirla.',
@@ -919,7 +945,7 @@ function cambiarComo() {
   ir(S.como || S.user.meta ? 'bandeja' : 'panel');
 }
 function salir(msg) {
-  borrarSesion(); S.ses = ''; S.user = null; S.kpi = null; S.bandeja = []; S.hechas = []; S.archivo = null; S.cargas = null; S.sis = null;
+  borrarSesion(); S.ses = ''; S.user = null; S.rutas = null; S.rutasProm = null; S.kpi = null; S.bandeja = []; S.hechas = []; S.archivo = null; S.cargas = null; S.sis = null;
   clear($('sDetalle')).classList.add('hidden'); ocultarAyuda();
   $('tCount').classList.add('hidden'); clear($('dResultado')); $('dFechas').classList.add('hidden'); $('dEstado').textContent = '';
   $('lPin').value = '';
@@ -988,6 +1014,153 @@ function pintarPendientes() {
   });
 }
 
+/* ============================== ruta correcta: árbol de Qflow por skill ============================== */
+/* El árbol vive en la pestaña RUTAS de la hoja (lo sube el supervisor). Cada auditor solo ve las rutas del skill del caso
+ * y las de «Información» (Llamada no efectiva / transferida), que son de los dos. Se pueden elegir varias: se guardan en
+ * «Ruta correcta» separadas con « | ». Si el árbol no está cargado, el campo sigue siendo de texto como antes. */
+var SEP_RUTA = ' | ';
+/* Sugerencias por palabras clave del comentario. Solo las que se validaron con la sábana de octubre 2026
+ * (en ese % de los casos con la palabra, el asesor usó esa tipificación): */
+var SUGERENCIAS = [
+  { sk: 'Fijo', nom: 'falla masiva', rx: /masiv|colectiv|toda la (zona|colonia)|\bsector\b/, tips: ['Averia colectiva'] },                         // 91%
+  { sk: 'Fijo', nom: 'sin internet', rx: /no navega|sin internet|no (le )?(tiene|hay|funciona|sirve) (el )?internet|no tiene servicio de internet/,
+    tips: ['No navega'], serv: /internet|wtth|ifi|hogar/ },                                                                                      // 74%
+  { sk: 'Fijo', nom: 'TV sin señal', rx: /sin senal|no (tiene|hay) senal|no (le )?(tiene|hay|funciona) (el )?(cable|tv|television)/,
+    tips: ['Sin señal'], serv: /tv|hogar/ },                                                                                                     // 71%
+  { sk: 'Fijo', nom: 'decodificador', rx: /control remoto|decodificador danad|stb danad|caja danad/, tips: ['Posible Stb Dañado'], serv: /tv|hogar/ }, // 63%
+  { sk: 'Fijo', nom: 'clave del WiFi', rx: /contrasena|clave (de(l)? )?(wifi|red|internet)|cambio de clave|nombre de (la )?red|ssid/,
+    tips: ['Configuracion WiFi', 'Cambio de contraseña'], serv: /internet|wtth|ifi/ },                                                           // 61%
+  { sk: 'Movil', nom: 'eSIM', rx: /\besim\b|e-sim/, tips: ['eSIM'] },                                                                            // 89%
+  { sk: 'Movil', nom: 'llamadas', rx: /no (puede )?(realizar|hacer|recibe|recibir|genera|entran|salen) (las )?llamadas|no (puede|le) llama/,
+    tips: ['No genera y/o no recibe llamadas'] },                                                                                                // 81%
+  { sk: 'Movil', nom: 'roaming', rx: /roaming|extranjero|fuera del pais|viaj/, tips: ['Roaming'] },                                             // 78%
+  { sk: 'Movil', nom: 'sin datos', rx: /no navega|sin (datos|internet)|no (le )?(funciona|tiene|sirve)n? (los )?(datos|internet)/, tips: ['No navega'] }, // 64%
+  { sk: 'Movil', nom: 'fecha de pago', rx: /fecha (limite )?de pago|fecha limite|cuando (se )?vence|fecha de corte/, tips: ['Fecha limite de pago'] }  // 59%
+];
+function skillRuta(skill) { var s = nrm(skill); return /movil/.test(s) ? 'Movil' : /nivel 1|multimedia|fijo/.test(s) ? 'Fijo' : ''; }
+function textoRuta(r) { return [r[0], r[1], r[2], r[3], r[4]].filter(function (x) { return x; }).join(' › '); }
+function cargarRutas() {
+  if (S.rutasProm) return S.rutasProm;
+  S.rutasProm = api('api_rutas', S.ses).then(function (r) {
+    S.rutas = r.rutas.map(function (x) { var t = textoRuta(x); return { t: t, n: nrm(t), sk: x[5], serv: nrm(x[2]), tip: nrm(x[3]), cat: nrm(x[1]), r4: nrm(textoRuta(x.slice(0, 4))), res: nrm(x[4]) }; });
+    S.rutasAct = r.actualizado;
+    return S.rutas;
+  }).catch(function (e) { S.rutasProm = null; throw e; });
+  return S.rutasProm;
+}
+function rutasDelCaso(c) {
+  var sk = skillRuta(c.skill);
+  return (S.rutas || []).filter(function (r) { return !sk || r.sk === sk || r.sk === 'Movil y Fijo'; });
+}
+function rutasElegidas() { var v = $('iRuta').value.trim(); return v ? v.split(SEP_RUTA).map(function (x) { return x.trim(); }).filter(function (x) { return x; }) : []; }
+function ponerRutas(lista) {
+  var vistos = {};
+  lista = lista.filter(function (x) { var k = nrm(x); if (vistos[k]) return false; vistos[k] = 1; return true; });
+  $('iRuta').value = lista.join(SEP_RUTA);
+  pintarChips(); pintarSugerencias(); validarForm();
+}
+function pintarChips() {
+  var box = clear($('rChips')), lista = rutasElegidas(), conArbol = !!(S.rutas && S.rutas.length);
+  if (!conArbol) return;
+  var conocidas = {};
+  rutasDelCaso(S.caso).forEach(function (r) { conocidas[r.n] = 1; });
+  lista.forEach(function (t, i) {
+    box.appendChild(h('div', { cls: 'rchip' }, h('span', null, t, conocidas[nrm(t)] ? null : h('div', { cls: 'small muted', text: 'Escrita a mano (no es de la lista de Qflow de este skill)' })),
+      h('button', { type: 'button', title: 'Quitar esta ruta', 'aria-label': 'Quitar ruta', text: '✕', on: { click: function () { var l = rutasElegidas(); l.splice(i, 1); ponerRutas(l); } } })));
+  });
+}
+function sugerenciasDe(c) {
+  var sk = skillRuta(c.skill), com = nrm(c.comentario), mias = rutasDelCaso(c);
+  var partes = String(c.ruta || '').split(' › '), servCaso = nrm(partes[2]), r4Caso = nrm(c.ruta);
+  var out = [], vistos = {};
+  SUGERENCIAS.forEach(function (g) {
+    if (g.sk !== sk) return;
+    var m = g.rx.exec(com); if (!m) return;
+    var tips = g.tips.map(nrm);
+    var cand = mias.filter(function (r) { return tips.indexOf(r.tip) >= 0 && (!g.serv || g.serv.test(r.serv)) && r.r4 !== r4Caso; });
+    var mismo = cand.filter(function (r) { return r.serv === servCaso; });
+    if (mismo.length) cand = mismo;
+    // una sugerencia por ruta (sin la resolución): al tocarla se elige la resolución
+    var por4 = {};
+    cand.forEach(function (r) { (por4[r.r4] || (por4[r.r4] = [])).push(r); });
+    Object.keys(por4).sort(function (a, b) { return tips.indexOf(por4[a][0].tip) - tips.indexOf(por4[b][0].tip) || a.localeCompare(b); }).slice(0, 3).forEach(function (k) {
+      if (vistos[k]) return; vistos[k] = 1;
+      var rs = por4[k];
+      out.push({ t4: rs[0].t.split(' › ').slice(0, 4).join(' › '), rutas: rs, por: m[0].trim(), nom: g.nom });
+    });
+  });
+  return out.slice(0, 6);
+}
+function pintarSugerencias() {
+  var box = clear($('rSug')), c = S.caso;
+  var elegidas4 = {}; rutasElegidas().forEach(function (t) { elegidas4[nrm(t.split(' › ').slice(0, 4).join(' › '))] = 1; });
+  var sug = (S.rutas && S.rutas.length && c) ? sugerenciasDe(c).filter(function (x) { return !elegidas4[nrm(x.t4)]; }) : [];
+  box.classList.toggle('hidden', !sug.length);
+  if (!sug.length) return;
+  box.appendChild(h('div', { cls: 'tit', text: 'Sugerida por el comentario (tóquenla solo si es la correcta):' }));
+  sug.forEach(function (x) {
+    var una = x.rutas.length === 1;
+    box.appendChild(h('button', { type: 'button', title: 'El comentario dice «' + x.por + '»', on: { click: function () {
+      if (una) { ponerRutas(rutasElegidas().concat([x.rutas[0].t])); return; }
+      $('rBuscar').value = x.t4; $('rBuscar').focus(); buscarRutas();   // que elijan la resolución
+    } } },
+      h('b', { text: '+ ' }), x.t4,
+      h('div', { cls: 'small muted', text: 'El comentario dice «' + x.por + '» (' + x.nom + ')' + (una ? '' : ' · al tocarla eligen la resolución (' + x.rutas.length + ')') })));
+  });
+}
+function buscarRutas() {
+  var c = S.caso, q = nrm($('rBuscar').value), lista = $('rLista');
+  var toks = q.split(' ').filter(function (x) { return x; });
+  var mias = rutasDelCaso(c), elegidas = {};
+  rutasElegidas().forEach(function (t) { elegidas[nrm(t)] = 1; });
+  var partes = String(c.ruta || '').split(' › '), servCaso = nrm(partes[2]), catCaso = nrm(partes[1]);
+  var res = toks.length
+    ? mias.filter(function (r) { return toks.every(function (t) { return r.n.indexOf(t) >= 0; }); })
+    : mias.filter(function (r) { return r.serv === servCaso && r.cat === catCaso; });
+  res = res.filter(function (r) { return !elegidas[r.n]; });
+  var resCaso = nrm(c.resolucion);
+  res.sort(function (a, b) { return (b.serv === servCaso) - (a.serv === servCaso) || (b.res === resCaso) - (a.res === resCaso) || a.t.localeCompare(b.t); });
+  var total = res.length;
+  res = res.slice(0, 60);
+  clear(lista).classList.remove('hidden');
+  S.rLista = res; S.rSel = 0;
+  if (!res.length) { lista.appendChild(h('div', { cls: 'vacio', text: toks.length ? 'Ninguna ruta de este skill tiene esas palabras.' : 'Escriban unas palabras para buscar.' })); return; }
+  res.forEach(function (r, i) {
+    lista.appendChild(h('div', { cls: i === 0 ? 'on' : '', text: r.t, on: { mousedown: function (e) { e.preventDefault(); elegirRuta(r); } } }));
+  });
+  if (total > res.length) lista.appendChild(h('div', { cls: 'vacio', text: 'Hay ' + total + ' rutas: escriban más palabras para encontrarla.' }));
+}
+function elegirRuta(r) {
+  $('rBuscar').value = ''; $('rLista').classList.add('hidden');
+  ponerRutas(rutasElegidas().concat([r.t]));
+}
+function teclasRuta(e) {
+  var l = $('rLista'), items = l.querySelectorAll('div:not(.vacio)');
+  if (e.key === 'Escape') { l.classList.add('hidden'); return; }
+  if (!items.length || l.classList.contains('hidden')) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    S.rSel = Math.max(0, Math.min(items.length - 1, S.rSel + (e.key === 'ArrowDown' ? 1 : -1)));
+    items.forEach(function (d, i) { d.classList.toggle('on', i === S.rSel); });
+    items[S.rSel].scrollIntoView({ block: 'nearest' });
+  }
+  if (e.key === 'Enter') { e.preventDefault(); elegirRuta(S.rLista[S.rSel]); }
+}
+/** Al abrir un caso: con el árbol, se elige de la lista; sin el árbol, se escribe como antes. */
+function prepararRuta(c) {
+  var modo = function () {
+    var conArbol = !!(S.rutas && S.rutas.length);
+    $('rBox').classList.toggle('hidden', !conArbol);
+    $('iRuta').classList.toggle('hidden', conArbol);
+    $('rBuscar').value = ''; $('rLista').classList.add('hidden');
+    var sk = skillRuta(c.skill);
+    $('rNota').textContent = conArbol ? 'Solo salen las rutas de Qflow de ' + (sk === 'Movil' ? 'Móvil' : sk || 'todos los skills') + ' y las de «Información». Pueden elegir varias.' : '';
+    pintarChips(); pintarSugerencias();
+  };
+  modo();
+  if (!S.rutas) cargarRutas().then(function () { if (S.caso === c) modo(); }).catch(function () { /* sin árbol: texto libre */ });
+}
+
 /* ============================== caso ============================== */
 function abrirCaso(id, origen) {
   var lista = origen === 'hechas' ? S.hechas : origen === 'actividad' ? (S.actividad || []) : S.bandeja;
@@ -1011,6 +1184,7 @@ function abrirCaso(id, origen) {
   $('cCierre').textContent = c.cierre || '';
   $('cCierreBox').classList.toggle('hidden', !c.cierre);
   $('iPatron').value = c.patron || ''; $('iRuta').value = c.rutaCorrecta || ''; $('iObs').value = c.observacion || '';
+  prepararRuta(c);
   pintarPreguntas(); validarForm();
   var pos = origen === 'bandeja' ? (S.bandeja.indexOf(c) + 1) + ' de ' + S.bandeja.length + ' pendientes' : 'Corrigiendo una auditoría guardada';
   $('cPos').textContent = pos;
@@ -1492,8 +1666,57 @@ function cargarEstado() {
       g.appendChild(h('tr', null, h('td', { text: fechaCorta(c.fecha) }), h('td', null, fechaCorta(c.cargadaEl), h('div', { cls: 'small muted', text: c.por })), h('td', { cls: 'num', text: c.asignados })));
     });
     pintarBorrar();
+    pintarRutasQflow();
     if (S.archivo) pintarFechas();
   }).catch(function (e) { toast(errMsg(e), true); });
+}
+/* el supervisor sube el árbol de rutas de Qflow (hoja «Rutas Qflow» + hoja «Cruce» servicio → skill) */
+function pintarRutasQflow() {
+  var sup = S.user && S.user.rol === 'SUPERVISOR';
+  $('rQflow').classList.toggle('hidden', !sup);
+  if (!sup) return;
+  cargarRutas().then(function (rs) {
+    var por = {}; rs.forEach(function (r) { por[r.sk] = (por[r.sk] || 0) + 1; });
+    $('rQEstado').textContent = rs.length
+      ? miles(rs.length) + ' rutas cargadas (' + miles(por.Fijo) + ' de Fijo, ' + miles(por.Movil) + ' de Móvil y ' + miles(por['Movil y Fijo']) + ' de Información)' + (S.rutasAct ? ' · ' + fechaCorta(S.rutasAct) : '') + '.'
+      : 'Todavía no se ha subido el árbol: «Ruta correcta» se escribe a mano.';
+  }).catch(function (e) { $('rQEstado').textContent = errMsg(e); });
+}
+function leerArbolQflow(file) {
+  $('rQEstado').textContent = 'Leyendo «' + file.name + '»…';
+  Promise.all([cargarXLSX(), file.arrayBuffer()]).then(function (x) {
+    var wb = XLSX.read(new Uint8Array(x[1]), { type: 'array', dense: true });
+    var tabla = function (nom) { return XLSX.utils.sheet_to_json(wb.Sheets[nom], { header: 1, raw: false, defval: '' }); };
+    var nomRutas = null, nomCruce = null;
+    wb.SheetNames.forEach(function (n) {
+      var t = tabla(n), h0 = (t[0] || []).map(nrm);
+      if (h0.indexOf('motivo') >= 0 && h0.indexOf('tipificacion') >= 0) nomRutas = n;
+      else if (h0[0] === 'servicio' || /cruce/i.test(n)) nomCruce = n;
+    });
+    if (!nomRutas) throw new Error('No encontré la hoja con las columnas Motivo, Categoria, Servicio, Tipificacion y Resolution.');
+    var cruce = {};
+    if (nomCruce) tabla(nomCruce).slice(1).forEach(function (r) { if (r[0] && r[1]) cruce[nrm(r[0])] = String(r[1]).trim(); });
+    var t = tabla(nomRutas), h0 = t[0].map(nrm), col = function (n) { return h0.indexOf(n); };
+    var iM = col('motivo'), iC = col('categoria'), iS = col('servicio'), iT = col('tipificacion'), iR = col('resolution') >= 0 ? col('resolution') : col('resolucion');
+    var iK = h0.findIndex(function (x) { return /skill/.test(x); });
+    var sinSkill = {}, lista = [];
+    t.slice(1).forEach(function (r) {
+      if (!r[iM] || !r[iT]) return;
+      var sk = cruce[nrm(r[iS])] || (iK >= 0 ? String(r[iK]).trim() : '');
+      sk = { 'fijo': 'Fijo', 'movil': 'Movil', 'movil y fijo': 'Movil y Fijo', 'corporativo': 'Corporativo' }[nrm(sk)] || '';
+      if (!sk) { sinSkill[String(r[iS]).trim()] = 1; return; }
+      var res = String(r[iR] || '').trim(); if (/^\(en blanco\)$|^#n\/a$/i.test(res)) res = '';
+      lista.push([r[iM], r[iC], r[iS], r[iT], res, sk]);
+    });
+    return api('api_cargarRutas', S.ses, lista).then(function (r) {
+      S.rutas = null; S.rutasProm = null;
+      var faltan = Object.keys(sinSkill);
+      toast('Listo: ' + miles(r.total) + ' rutas de Qflow (Fijo ' + miles(r.porSkill.Fijo) + ', Móvil ' + miles(r.porSkill.Movil) + ', Información ' + miles(r.porSkill['Movil y Fijo']) + ').' +
+        (faltan.length ? ' Sin skill en el Cruce (no se subieron): ' + faltan.join(', ') + '.' : ''));
+      pintarRutasQflow();
+    });
+  }).catch(function (e) { toast(errMsg(e), true); pintarRutasQflow(); })
+    .then(function () { $('rQArchivo').value = ''; });
 }
 /* el supervisor borra un día cargado (si la sábana se subió mal) */
 function pintarBorrar() {
@@ -1987,6 +2210,10 @@ $('aRes').addEventListener('change', pintarActividad);
 $('cGuardar').addEventListener('click', function () { guardar(false); });
 $('cGuardarSig').addEventListener('click', function () { guardar(true); });
 ['iPatron', 'iRuta', 'iObs'].forEach(function (id) { $(id).addEventListener('input', validarForm); $(id).addEventListener('change', validarForm); });
+$('rBuscar').addEventListener('input', buscarRutas);
+$('rBuscar').addEventListener('focus', buscarRutas);
+$('rBuscar').addEventListener('keydown', teclasRuta);
+$('rBuscar').addEventListener('blur', function () { setTimeout(function () { $('rLista').classList.add('hidden'); }, 150); });
 document.querySelectorAll('#pPeriodo button').forEach(function (b) { b.addEventListener('click', function () { S.periodo = b.dataset.p; cargarPanel(); }); });
 $('pExcel').addEventListener('click', descargarExcel);
 $('pMes').addEventListener('change', function () { S.periodo = this.value ? 'mes:' + this.value : 'mes'; cargarPanel(); });
@@ -2012,6 +2239,7 @@ zona.addEventListener('drop', function (e) { var f = e.dataTransfer.files[0]; if
 $('dAsignar').addEventListener('click', asignar);
 $('dCompletar').addEventListener('click', completarTapados);
 $('bContar').addEventListener('click', contarBorrar);
+$('rQArchivo').addEventListener('change', function () { if (this.files[0]) leerArbolQflow(this.files[0]); });
 $('bFecha').addEventListener('change', function () { clear($('bConfirma')); });
 iniciar();
 </script>
