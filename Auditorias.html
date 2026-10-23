@@ -649,9 +649,9 @@ var AYUDA = {
   sRegla: 'Regla automática que encontró el error.',
   sPorque: 'Qué leyó el sistema en el comentario y por qué no cuadra con la ruta.',
   sEstado: 'ERROR: cuenta como error del asesor.\nNO ES ERROR: el supervisor lo descartó y ya no cuenta.\nToque la fila para ver el caso completo.',
-  excel: 'Descarga un Excel con todo lo del período elegido (Hoy, Esta semana, Este mes o Todo):\n• Auditorías: cada caso asignado, quién lo auditó, P1 a P4, resultado, patrón y observación.\n• Errores del sistema: los casos que marcó la revisión automática y su revisión.',
+  excel: 'Descarga un Excel con todo lo del equipo en el período elegido (Hoy, Esta semana, Este mes o Todo):\n• Auditorías: cada caso asignado, auditado o pendiente, con P1 a P4, resultado, patrón, observación y quién lo auditó.\n• Errores del sistema: los casos que marcó la revisión automática y su revisión.',
   cHoy: 'Desmarca a quien no trabaja hoy (libre o de vacaciones): ese día no recibe casos. Los demás reciben su cantidad normal.',
-  como: 'Solo el supervisor. Abre la bandeja de un auditor para revisarla, hacer pruebas o auditar por él un día. Lo que guardes ahí queda como auditoría de esa persona.',
+  como: 'Abre la bandeja de un compañero para ayudarle con sus casos. El caso sigue siendo de esa persona, pero queda tu nombre como quien lo auditó.\nUna auditoría ya hecha solo la puede cambiar quien la hizo o el supervisor.',
   sObs: '«No es error» pide escribir por qué: el caso deja de contar y con eso se afina la regla.\n«Error confirmado» deja constancia de que el supervisor lo revisó.',
   // cargar sábana
   cAuditor: 'Auditores activos que reciben casos. Se cambian en la pestaña AUDITORES de la hoja de Google.',
@@ -845,8 +845,8 @@ function abrirApp(ses, u) {
   $('uNombre').textContent = u.nombre + (u.rol === 'SUPERVISOR' && !/supervisor/i.test(u.nombre) ? ' · supervisor' : '');
   S.como = '';
   var sup = u.rol === 'SUPERVISOR';
-  $('uComoBox').classList.toggle('hidden', !sup || !(u.equipo || []).length);
-  if (sup) {
+  $('uComoBox').classList.toggle('hidden', !(u.equipo || []).length);
+  if ((u.equipo || []).length) {
     var sel = clear($('uComo'));
     sel.appendChild(h('option', { value: '', text: u.meta ? 'Mi bandeja' : 'Mi vista' }));
     (u.equipo || []).forEach(function (n) { sel.appendChild(h('option', { value: n, text: n })); });
@@ -854,7 +854,7 @@ function abrirApp(ses, u) {
   pestanasBandeja();
   var sinCasos = sup && !u.meta;
   llenarPatrones();
-  $('pExcel').classList.toggle('hidden', u.rol !== 'SUPERVISOR');
+  $('pExcel').classList.remove('hidden');
   ir(sinCasos ? 'panel' : 'bandeja');
 }
 /** Mi bandeja y Mis auditorías: para quien recibe casos, o para el supervisor mientras ve la bandeja de alguien. */
@@ -864,8 +864,8 @@ function pestanasBandeja() {
   var b = $('bComo');
   b.classList.toggle('hidden', !S.como);
   if (S.como) {
-    clear(b).appendChild(h('div', { style: 'flex:1' }, 'Estás viendo la bandeja de ', h('b', { text: S.como }),
-      '. Lo que guardes aquí queda como auditoría de esa persona.'));
+    clear(b).appendChild(h('div', { style: 'flex:1' }, 'Estás en la bandeja de ', h('b', { text: S.como }),
+      '. Los casos siguen siendo de esa persona; lo que audites queda con tu nombre como quien lo auditó.'));
     b.appendChild(h('button', { cls: 'btn sm', text: 'Volver a mi vista', on: { click: function () { $('uComo').value = ''; cambiarComo(); } } }));
   }
 }
@@ -955,7 +955,7 @@ function abrirCaso(id, origen) {
   $('cTitulo').textContent = 'Caso ' + c.caso;
   clear($('cSkill')).appendChild(chipSkill(c.skill));
   clear($('cAtraso')); if (c.atraso && c.estado !== 'AUDITADO') $('cAtraso').appendChild(h('span', { cls: 'chip late', text: 'Atrasado ' + c.atraso + (c.atraso === 1 ? ' día' : ' días') }));
-  if (c.estado === 'AUDITADO') $('cAtraso').appendChild(h('span', { cls: 'chip ok', text: 'Auditado el ' + fechaCorta(c.fechaAud) + ' · editando' }));
+  if (c.estado === 'AUDITADO') $('cAtraso').appendChild(h('span', { cls: 'chip ok', text: 'Auditado el ' + fechaCorta(c.fechaAud) + (c.auditadoPor ? ' por ' + c.auditadoPor : '') + ' · editando' }));
   var meta = clear($('cMeta'));
   [['Fecha del caso', fechaCorta(c.fechaCaso), 'fechaCaso'], ['Asesor', c.asesor, 'asesor'], ['Tipo', c.tipo, 'tipo'], ['Canal', c.canal, 'canal'],
    ['Tema', c.tema, 'tema'], ['Teléfono', telVer(c.tel), 'telefono'], ['Sábana del', fechaCorta(c.fechaSabana), 'sabana']].forEach(function (m) {
@@ -1069,7 +1069,8 @@ function cargarHechas() {
       t.appendChild(h('tr', { cls: 'click', on: { click: function () { abrirCaso(c.id, 'hechas'); } } },
         h('td', { text: fechaCorta(c.fechaAud) }), h('td', null, chipSkill(c.skill)), h('td', null, h('b', { text: c.caso })),
         h('td', { text: c.asesor }), h('td', null, h('span', { cls: 'pill ' + r.c, text: c.resultado || r.r })),
-        h('td', null, h('div', { text: c.patron || '' }), h('div', { cls: 'small muted', text: c.rutaCorrecta || '' }))));
+        h('td', null, h('div', { text: c.patron || '' }), h('div', { cls: 'small muted', text: c.rutaCorrecta || '' }),
+          c.auditadoPor && nrm(c.auditadoPor) !== nrm(c.auditor) ? h('div', { cls: 'small', text: 'Lo auditó ' + c.auditadoPor }) : null)));
     });
   }).catch(function (e) { toast(errMsg(e), true); });
 }
