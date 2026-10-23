@@ -484,7 +484,8 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
           <div id="dFechas" class="hidden" style="margin-top:12px">
             <table id="tFechas"></table>
             <div id="dPlan" class="small muted" style="margin-top:8px"></div>
-            <div class="acciones"><button class="btn primary" id="dAsignar" disabled>Asignar casos</button></div>
+            <div class="acciones"><button class="btn primary" id="dAsignar" disabled>Asignar casos</button>
+              <button class="btn hidden" id="dCompletar" title="Para las fechas que ya se cargaron cuando TAPAR_DATOS estaba en SÍ: pone el comentario, el cierre y el teléfono completos en los casos que quedaron tapados. No asigna casos nuevos ni cambia lo auditado.">Completar datos tapados</button></div>
           </div>
           <div id="dResultado" style="margin-top:12px"></div>
         </div>
@@ -1567,6 +1568,46 @@ function planCarga() {
   var fuera = S.cargas.auditores.length - aud.length;
   if (dias.length && fuera) $('dPlan').textContent += ' ' + fuera + (fuera === 1 ? ' auditor no recibe' : ' auditores no reciben') + ' casos hoy.';
   $('dAsignar').disabled = !dias.length || !aud.length;
+  var ya = dias.some(function (d) { return S.cargas.fechasCargadas.indexOf(d) >= 0; });
+  $('dCompletar').classList.toggle('hidden', !(ya && S.user.rol === 'SUPERVISOR'));
+}
+
+/** Rellena los casos que se guardaron tapados (sábana cargada con TAPAR_DATOS = SÍ). No asigna nada. */
+function completarTapados() {
+  var dias = diasElegidos().filter(function (d) { return S.cargas.fechasCargadas.indexOf(d) >= 0; });
+  if (!dias.length) return;
+  if (S.cargas.tapar) { toast('Primero cambien CONFIG › TAPAR_DATOS a «NO» y vuelvan a abrir esta pestaña.', true); return; }
+  var btn = $('dCompletar'); btn.disabled = true; btn.textContent = 'Completando…';
+  api('api_tapados', S.ses, dias).then(function (t) {
+    var quiere = {}, quiereSis = {};
+    t.casos.forEach(function (id) { quiere[id] = 1; });
+    t.sistema.forEach(function (id) { quiereSis[id] = 1; });
+    var casos = [], sistema = [], vistos = {};
+    S.archivo.filas.forEach(function (r) {
+      if (dias.indexOf(r.dia) < 0) return;
+      var id = r.dia.replace(/-/g, '') + '-' + r.caso;
+      if (vistos[id]) return;          // la primera tipificación del caso, la misma que se asignó
+      vistos[id] = 1;
+      if (quiere[id]) {
+        var cierre = (nrm(r.tipo) === 'wf' && r.cierre.trim() && r.cierre.trim() !== r.com.trim()) ? r.cierre.slice(0, 3000) : '';
+        casos.push({ id: id, comentario: r.com.slice(0, 6000), cierre: cierre, tel: r.tel });
+      }
+      if (quiereSis[id]) {
+        var x = revisarCaso(r, false);
+        sistema.push({ id: id, comentario: r.com.slice(0, 6000), detalle: x ? x.detalle : '' });
+      }
+    });
+    if (!casos.length && !sistema.length) return { casos: 0, sistema: 0, nada: t.casos.length + t.sistema.length };
+    return api('api_completarDatos', S.ses, { casos: casos, sistema: sistema });
+  }).then(function (r) {
+    var msg = r.nada === 0 ? 'Esas fechas no tienen casos tapados.'
+      : r.nada ? 'Este archivo no trae los casos tapados de esas fechas. ¿Es la misma sábana?'
+      : 'Listo: ' + r.casos + ' casos y ' + r.sistema + ' del Sistema ya tienen sus datos completos.';
+    clear($('dResultado')).appendChild(h('div', { cls: 'card pad resultado' }, h('b', { text: msg })));
+    toast(msg, !!r.nada);
+    if (S.bandeja) api('api_bandeja', S.ses, S.como).then(aplicarBandeja);
+  }).catch(function (e) { toast(errMsg(e), true); })
+    .then(function () { btn.disabled = false; btn.textContent = 'Completar datos tapados'; });
 }
 
 /* pistas automáticas: mismas búsquedas que la plantilla de Excel */
@@ -1891,6 +1932,7 @@ var zona = $('dZona');
 ['dragleave', 'drop'].forEach(function (ev) { zona.addEventListener(ev, function (e) { e.preventDefault(); zona.classList.remove('on'); }); });
 zona.addEventListener('drop', function (e) { var f = e.dataTransfer.files[0]; if (f) leerArchivo(f); });
 $('dAsignar').addEventListener('click', asignar);
+$('dCompletar').addEventListener('click', completarTapados);
 iniciar();
 </script>
 </body>
