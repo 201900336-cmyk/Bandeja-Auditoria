@@ -281,7 +281,7 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
     </div>
     <div class="efichas" aria-hidden="true">
       <div class="eficha" id="eFicha">
-        <div class="ecaso"><span>Caso de ejemplo <b class="econt" id="eNum">1 de 15</b></span><span id="eSkill">Nivel 1 Multimedia</span></div>
+        <div class="ecaso"><span>Caso de ejemplo <b class="econt" id="eNum">1 de 15</b></span><span id="eSkill">Fijo</span></div>
         <div class="eruta" id="eRuta">Reclamos › Avería › TV HFC › Sin señal</div>
         <p class="ecom" id="eCom">Tecnología: <mark>DTH</mark>. Problema reportado: no tiene señal en la TV. Se revisa decodificador y se genera avería.</p>
         <div class="epreg" id="ePreg">
@@ -317,7 +317,7 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
       <div class="card pad comoaviso hidden" id="bComo"></div>
       <div class="grid kpis">
         <div class="card kpi"><div class="lbl">Pendientes<span class="ayuda" data-tip="Casos que le faltan por auditar, de cualquier día. Lo que no termina en el día se acumula como «Atrasado».">?</span></div><div class="val" id="kPend">–</div><div class="sub" id="kPendSub"></div></div>
-        <div class="card kpi"><div class="lbl">Hechas hoy<span class="ayuda" data-tip="Auditorías que guardó hoy contra su meta del día (normalmente 15 casos: 8 de Nivel 1 y 7 de Móvil).">?</span></div><div class="val" id="kHoy">–</div><div class="bar" id="kHoyBar"><i style="width:0"></i></div><div class="sub" id="kHoySub"></div></div>
+        <div class="card kpi"><div class="lbl">Hechas hoy<span class="ayuda" data-tip="Auditorías que guardó hoy contra su meta del día (normalmente 15 casos: 8 de Fijo y 7 de Móvil).">?</span></div><div class="val" id="kHoy">–</div><div class="bar" id="kHoyBar"><i style="width:0"></i></div><div class="sub" id="kHoySub"></div></div>
         <div class="card kpi"><div class="lbl">Mi cumplimiento del mes<span class="ayuda" data-tip="Auditadas ÷ asignadas de este mes. Llega a 100 % cuando termina todo lo que le asignaron.">?</span></div><div class="val" id="kMes">–</div><div class="bar" id="kMesBar"><i style="width:0"></i></div><div class="sub" id="kMesSub"></div></div>
       </div>
       <div class="card">
@@ -567,7 +567,7 @@ function apiWeb(fn, args) {
 function errMsg(e) { return String((e && e.message) || e).replace(/^Error:\s*/, '').replace(/^Exception:\s*/, '').replace(/^SESION:\s*/, ''); }
 function chipSkill(s) {
   var n = nrm(s), cls = n.indexOf('movil') >= 0 ? 'mov' : n.indexOf('nivel 1') >= 0 ? 'n1' : 'oth';
-  var txt = n.indexOf('movil') >= 0 ? 'Móvil' : n.indexOf('nivel 1') >= 0 ? 'Nivel 1' : s;
+  var txt = n.indexOf('movil') >= 0 ? 'Móvil' : n.indexOf('nivel 1') >= 0 ? 'Fijo' : s;
   return h('span', { cls: 'chip ' + cls, text: txt });
 }
 function barCls(x) { return x == null ? '' : x >= 0.95 ? 'ok' : x >= 0.8 ? 'mid' : 'low'; }
@@ -589,7 +589,7 @@ function rutaDe(r) { return [r.mercado, r.n2, r.n3, r.n4].filter(function (x) { 
 var AYUDA = {
   // bandeja y caso
   asignado: 'Día en que se le asignó el caso.\nSi ya pasó y no lo ha auditado, sale «Atrasado» y sigue en su bandeja hasta que lo termine.',
-  skill: 'Cola por donde entró el cliente: Nivel 1 Multimedia o Call Center Móvil.\nCada auditor recibe 8 de Nivel 1 y 7 de Móvil por día.',
+  skill: 'Cola por donde entró el cliente: Fijo (Nivel 1 Multimedia) o Móvil (Call Center Móvil).\nCada auditor recibe 8 de Fijo y 7 de Móvil por día.',
   caso: 'Número del caso en Qflow, por si necesita buscarlo. Debajo dice de qué sábana salió.',
   asesor: 'Quien tipificó el caso (el gestor que lo ingresó). Si está mal tipificado, el error se le cuenta a esta persona.',
   ruta: 'Lo que eligió el asesor: Mercado › Nivel II › Nivel III › Nivel IV.\nEn P1 usted revisa si esa ruta es el motivo real del cliente.',
@@ -614,7 +614,7 @@ var AYUDA = {
   auditado: 'Fecha en que guardó la auditoría. Toque la fila para abrirla y corregirla.',
   patronRuta: 'El patrón de error y la ruta correcta que usted escribió.',
   // dashboard: indicadores
-  tCasos: 'Todos los casos de Nivel 1 Multimedia y Call Center Móvil de las sábanas cargadas en el período.\nEl sistema los revisa todos antes de asignar.',
+  tCasos: 'Todos los casos de Fijo (Nivel 1 Multimedia) y Móvil (Call Center Móvil) de las sábanas cargadas en el período.\nEl sistema los revisa todos antes de asignar.',
   tErrSis: 'Casos que las reglas automáticas marcaron con error.\nQuedan en la pestaña Sistema y no se asignan al equipo.\nNo cuenta los que el supervisor marcó «No es error».',
   tAuditadas: 'Casos que el equipo ya auditó, de los que se asignaron en el período.',
   tCumpl: 'Auditadas ÷ asignadas del período. La meta es 100 %.',
@@ -786,13 +786,13 @@ function mostrarLogin(msg) {
 }
 /* entrada: la ficha de ejemplo va auditando casos (P1 a P4, sello del resultado, siguiente caso) */
 var FICHAS = [
-  { skill: 'Nivel 1 Multimedia', ruta: 'Reclamos › Avería › TV HFC › Sin señal', r: ['No', 'Sí', 'Sí', 'Sí'], tipo: '', sello: 'Mal tipificado', por: 'DTH en ruta de HFC',
+  { skill: 'Fijo', ruta: 'Reclamos › Avería › TV HFC › Sin señal', r: ['No', 'Sí', 'Sí', 'Sí'], tipo: '', sello: 'Mal tipificado', por: 'DTH en ruta de HFC',
     com: 'Tecnología: <mark>DTH</mark>. Problema reportado: no tiene señal en la TV. Se revisa decodificador y se genera avería.' },
-  { skill: 'Call Center Móvil', ruta: 'Reclamos › Móvil › Datos móviles › Sin navegación', r: ['Sí', 'Sí', 'Sí', 'Sí'], tipo: 'bien', sello: 'Bien', por: 'Ruta, resolución y cierre correctos',
+  { skill: 'Móvil', ruta: 'Reclamos › Móvil › Datos móviles › Sin navegación', r: ['Sí', 'Sí', 'Sí', 'Sí'], tipo: 'bien', sello: 'Bien', por: 'Ruta, resolución y cierre correctos',
     com: 'Cliente no navega con datos móviles. Se configura el APN y queda navegando.' },
-  { skill: 'Nivel 1 Multimedia', ruta: 'Trámites cortos › Información › Llamada no efectiva', r: ['No', 'Sí', 'Sí', 'Sí'], tipo: '', sello: 'Mal tipificado', por: 'Dijo el motivo y quedó como corte',
+  { skill: 'Fijo', ruta: 'Trámites cortos › Información › Llamada no efectiva', r: ['No', 'Sí', 'Sí', 'Sí'], tipo: '', sello: 'Mal tipificado', por: 'Dijo el motivo y quedó como corte',
     com: 'Problema reportado: <mark>no tiene internet</mark> desde ayer. Cliente corta la llamada.' },
-  { skill: 'Call Center Móvil', ruta: 'Consultas › Móvil › Saldo › Consulta de saldo', r: ['Sí', 'Sí', 'Sí', 'No'], tipo: 'gris', sello: 'Bien, comentario incompleto', por: 'Falta qué se le informó',
+  { skill: 'Móvil', ruta: 'Consultas › Móvil › Saldo › Consulta de saldo', r: ['Sí', 'Sí', 'Sí', 'No'], tipo: 'gris', sello: 'Bien, comentario incompleto', por: 'Falta qué se le informó',
     com: 'Consulta saldo.' }
 ];
 var PREG_CORTA = ['P1 · ¿La ruta es el motivo real?', 'P2 · ¿La resolución es lo que hizo?', 'P3 · ¿El cierre es correcto?', 'P4 · ¿El comentario está completo?'];
