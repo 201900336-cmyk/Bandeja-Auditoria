@@ -223,6 +223,11 @@ th .ayuda{background:#4a4a4a;color:#fff}
 .tile .val{font-size:31px;font-weight:800;margin-top:4px;line-height:1.1}
 .tile .sub{font-size:12.5px;opacity:.92;margin-top:2px}
 .pgrid2{grid-template-columns:1fr;margin-bottom:14px}
+.pgrid2col{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.lista.ranking{counter-reset:rk}
+.lista.ranking li{counter-increment:rk}
+.lista.ranking li>span:first-child:before{content:counter(rk);display:inline-block;width:22px;height:22px;margin-right:8px;border-radius:50%;background:#1a1a1a;color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:22px;vertical-align:1px}
+.lista.ranking li:nth-child(-n+3)>span:first-child:before{background:var(--accent)}
 tr.total td{font-weight:700;background:#f0f0f0}
 td.rojo{color:var(--accent);font-weight:700}
 .barras .fila{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;margin:10px 0}
@@ -416,7 +421,10 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
       <div class="grid pgrid" style="margin-bottom:14px">
         <div class="card pad"><h3>Auditorías por día (últimos 14 días)</h3><div class="chart" id="pChart"></div></div>
         <div class="card pad"><h3>No procedentes más frecuentes<span class="ayuda" data-tip="AYUDA:frecuentes">?</span></h3><ul class="lista" id="pPat"></ul></div>
-        <div class="card pad"><h3>Asesores con más no procedentes<span class="ayuda" data-tip="AYUDA:asesoresNP">?</span></h3><ul class="lista" id="pAse"></ul></div>
+      </div>
+      <div class="grid pgrid2col" style="margin-bottom:14px">
+        <div class="card pad"><h3>Top 10 asesores de Fijo con más no procedentes<span class="ayuda" data-tip="AYUDA:asesoresNP">?</span></h3><ol class="lista ranking" id="pAseFijo"></ol></div>
+        <div class="card pad"><h3>Top 10 asesores de Móvil con más no procedentes<span class="ayuda" data-tip="AYUDA:asesoresNP">?</span></h3><ol class="lista ranking" id="pAseMovil"></ol></div>
       </div>
       <div class="card">
         <div class="pad toolbar" style="margin:0;padding-bottom:8px">
@@ -1220,11 +1228,18 @@ function pintarPanel(p) {
   d.frecuentes.forEach(function (x) {
     pl.appendChild(h('li', null, h('span', null, x.nombre, ' ', h('span', { cls: 'chip ' + (x.fuente === 'Sistema' ? 'sis' : 'eq'), text: x.fuente })), h('b', { text: x.n })));
   });
-  var al = clear($('pAse'));
-  if (!d.asesores.length) al.appendChild(h('li', { cls: 'muted', text: 'Sin no procedentes ' + nomP + '.' }));
-  d.asesores.forEach(function (x) {
-    al.appendChild(h('li', null, h('span', null, x.asesor, ' ', chipSkill(x.skill),
-      h('div', { cls: 'small muted', text: 'Sistema: ' + x.sistema + ', equipo: ' + x.equipo })), h('b', { text: x.total })));
+  // top 10 de asesores, uno para Fijo y otro para Móvil
+  var porSk = d.asesoresSkill || {};
+  [['pAseFijo', 'nivel 1'], ['pAseMovil', 'movil']].forEach(function (par) {
+    var lista = [];
+    Object.keys(porSk).forEach(function (sk) { if (nrm(sk).indexOf(par[1]) >= 0) lista = lista.concat(porSk[sk]); });
+    lista.sort(function (x, y) { return y.total - x.total; }); lista = lista.slice(0, 10);
+    var ul = clear($(par[0]));
+    if (!lista.length) ul.appendChild(h('li', { cls: 'muted', text: 'Sin no procedentes ' + nomP + '.' }));
+    lista.forEach(function (x) {
+      ul.appendChild(h('li', null, h('span', null, x.asesor,
+        h('div', { cls: 'small muted', style: 'margin-left:30px', text: 'Sistema: ' + x.sistema + ', equipo: ' + x.equipo })), h('b', { text: x.total })));
+    });
   });
 }
 function chipTxt(s) { var n = nrm(s); return n.indexOf('movil') >= 0 ? 'Móvil' : n.indexOf('nivel 1') >= 0 ? 'Fijo' : s; }
