@@ -244,6 +244,10 @@ td.rojo{color:var(--accent);font-weight:700}
 .btn.negro:hover{background:#000}
 .resultado{border-left:4px solid #1a1a1a}
 .txtrojo{color:var(--accent);font-weight:700}
+.ucomo{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#cfcfcf;cursor:default}
+.ucomo select{background:#2a2a2e;color:#fff;border:1px solid #4a4a50;border-radius:6px;padding:4px 6px;font-size:13px}
+.comoaviso{border-left:4px solid var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-child{text-decoration:none}
 .aviso{color:var(--accent);margin-top:6px}
 </style>
 </head>
@@ -303,12 +307,14 @@ td.rojo{color:var(--accent);font-weight:700}
       <button class="tab" data-v="sistema">Sistema</button>
       <button class="tab" data-v="cargar">Cargar sábana</button>
     </nav>
-    <div class="user"><span id="uNombre"></span><button class="link" id="uSalir">Salir</button></div>
+    <div class="user"><label class="ucomo hidden" id="uComoBox" data-tip="AYUDA:como">Ver la bandeja de
+      <select id="uComo"></select></label><span id="uNombre"></span><button class="link" id="uSalir">Salir</button></div>
   </div></header>
 
   <main class="wrap">
     <!-- BANDEJA -->
     <section id="vBandeja">
+      <div class="card pad comoaviso hidden" id="bComo"></div>
       <div class="grid kpis">
         <div class="card kpi"><div class="lbl">Pendientes<span class="ayuda" data-tip="Casos que le faltan por auditar, de cualquier día. Lo que no termina en el día se acumula como «Atrasado».">?</span></div><div class="val" id="kPend">–</div><div class="sub" id="kPendSub"></div></div>
         <div class="card kpi"><div class="lbl">Hechas hoy<span class="ayuda" data-tip="Auditorías que guardó hoy contra su meta del día (normalmente 15 casos: 8 de Nivel 1 y 7 de Móvil).">?</span></div><div class="val" id="kHoy">–</div><div class="bar" id="kHoyBar"><i style="width:0"></i></div><div class="sub" id="kHoySub"></div></div>
@@ -386,6 +392,7 @@ td.rojo{color:var(--accent);font-weight:700}
     <section id="vPanel" class="hidden">
       <div class="toolbar">
         <h2 class="grow">Dashboard de calidad</h2>
+        <button class="btn negro hidden" id="pExcel" data-tip="AYUDA:excel">Descargar Excel</button>
         <div class="seg" id="pPeriodo">
           <button data-p="hoy">Hoy</button><button data-p="semana">Esta semana</button><button data-p="mes" class="on">Este mes</button><button data-p="todo">Todo</button>
         </div>
@@ -489,7 +496,7 @@ var INICIAL = (function () {
 
 /* ============================== estado y utilidades ============================== */
 var S = { user: null, ses: '', bandeja: [], kpi: null, hoy: '', vista: 'bandeja', caso: null, origen: 'bandeja',
-          hechas: [], periodo: 'mes', periodoSis: 'mes', sis: null, revisando: false, cargas: null, archivo: null, guardando: false };
+          hechas: [], periodo: 'mes', periodoSis: 'mes', sis: null, revisando: false, excluidos: {}, como: '', cargas: null, archivo: null, guardando: false };
 var RESP = ['Sí', 'No', 'Duda'];
 var PREG = [
   ['p1', 'P1 · ¿La ruta es el motivo real del cliente?', 'Mercado › Nivel II › III › IV: lo que pidió o reportó, en el servicio correcto.'],
@@ -642,6 +649,9 @@ var AYUDA = {
   sRegla: 'Regla automática que encontró el error.',
   sPorque: 'Qué leyó el sistema en el comentario y por qué no cuadra con la ruta.',
   sEstado: 'ERROR: cuenta como error del asesor.\nNO ES ERROR: el supervisor lo descartó y ya no cuenta.\nToque la fila para ver el caso completo.',
+  excel: 'Descarga un Excel con todo lo del período elegido (Hoy, Esta semana, Este mes o Todo):\n• Auditorías: cada caso asignado, quién lo auditó, P1 a P4, resultado, patrón y observación.\n• Errores del sistema: los casos que marcó la revisión automática y su revisión.',
+  cHoy: 'Desmarca a quien no trabaja hoy (libre o de vacaciones): ese día no recibe casos. Los demás reciben su cantidad normal.',
+  como: 'Solo el supervisor. Abre la bandeja de un auditor para revisarla, hacer pruebas o auditar por él un día. Lo que guardes ahí queda como auditoría de esa persona.',
   sObs: '«No es error» pide escribir por qué: el caso deja de contar y con eso se afina la regla.\n«Error confirmado» deja constancia de que el supervisor lo revisó.',
   // cargar sábana
   cAuditor: 'Auditores activos que reciben casos. Se cambian en la pestaña AUDITORES de la hoja de Google.',
@@ -833,10 +843,37 @@ function abrirApp(ses, u) {
   S.ses = ses; S.user = u; S.hoy = u.hoy;
   $('vLogin').classList.add('hidden'); $('vApp').classList.remove('hidden');
   $('uNombre').textContent = u.nombre + (u.rol === 'SUPERVISOR' && !/supervisor/i.test(u.nombre) ? ' · supervisor' : '');
-  var sinCasos = u.rol === 'SUPERVISOR' && !u.meta;
-  document.querySelectorAll('.tab[data-v=bandeja], .tab[data-v=hechas]').forEach(function (t) { t.classList.toggle('hidden', sinCasos); });
+  S.como = '';
+  var sup = u.rol === 'SUPERVISOR';
+  $('uComoBox').classList.toggle('hidden', !sup || !(u.equipo || []).length);
+  if (sup) {
+    var sel = clear($('uComo'));
+    sel.appendChild(h('option', { value: '', text: u.meta ? 'Mi bandeja' : 'Mi vista' }));
+    (u.equipo || []).forEach(function (n) { sel.appendChild(h('option', { value: n, text: n })); });
+  }
+  pestanasBandeja();
+  var sinCasos = sup && !u.meta;
   llenarPatrones();
+  $('pExcel').classList.toggle('hidden', u.rol !== 'SUPERVISOR');
   ir(sinCasos ? 'panel' : 'bandeja');
+}
+/** Mi bandeja y Mis auditorías: para quien recibe casos, o para el supervisor mientras ve la bandeja de alguien. */
+function pestanasBandeja() {
+  var u = S.user, ver = !(u.rol === 'SUPERVISOR' && !u.meta) || !!S.como;
+  document.querySelectorAll('.tab[data-v=bandeja], .tab[data-v=hechas]').forEach(function (t) { t.classList.toggle('hidden', !ver); });
+  var b = $('bComo');
+  b.classList.toggle('hidden', !S.como);
+  if (S.como) {
+    clear(b).appendChild(h('div', { style: 'flex:1' }, 'Estás viendo la bandeja de ', h('b', { text: S.como }),
+      '. Lo que guardes aquí queda como auditoría de esa persona.'));
+    b.appendChild(h('button', { cls: 'btn sm', text: 'Volver a mi vista', on: { click: function () { $('uComo').value = ''; cambiarComo(); } } }));
+  }
+}
+function cambiarComo() {
+  S.como = $('uComo').value;
+  S.bandeja = []; S.hechas = []; S.kpi = null;
+  pestanasBandeja();
+  ir(S.como || S.user.meta ? 'bandeja' : 'panel');
 }
 function salir(msg) {
   borrarSesion(); S.ses = ''; S.user = null; S.kpi = null; S.bandeja = []; S.hechas = []; S.archivo = null; S.cargas = null; S.sis = null;
@@ -865,7 +902,7 @@ function ir(v) {
 /* ============================== bandeja ============================== */
 function cargarBandeja() {
   setCargando($('tPend'), 7);
-  return api('api_bandeja', S.ses).then(aplicarBandeja).catch(function (e) { toast(errMsg(e), true); });
+  return api('api_bandeja', S.ses, S.como).then(aplicarBandeja).catch(function (e) { toast(errMsg(e), true); });
 }
 function aplicarBandeja(r) {
   S.bandeja = r.pendientes; S.kpi = r.kpi; S.hoy = r.hoy;
@@ -1003,7 +1040,7 @@ function guardar(seguir) {
   var c = S.caso, v = respuestas();
   S.guardando = true; validarForm();
   $('cGuardarSig').textContent = 'Guardando…';
-  api('api_guardar', S.ses, c.id, v).then(function (r) {
+  api('api_guardar', S.ses, c.id, v, S.como).then(function (r) {
     var idx = S.bandeja.indexOf(c);
     aplicarBandeja(r);
     toast('Guardado: caso ' + c.caso + ' · ' + calcular(v).r);
@@ -1020,7 +1057,7 @@ function guardar(seguir) {
 /* ============================== mis auditorías ============================== */
 function cargarHechas() {
   setCargando($('tHechas'), 6);
-  api('api_misAuditorias', S.ses).then(function (lista) {
+  api('api_misAuditorias', S.ses, S.como).then(function (lista) {
     S.hechas = lista;
     var t = clear($('tHechas'));
     $('hechasVacio').classList.toggle('hidden', lista.length > 0);
@@ -1163,6 +1200,24 @@ function pintarPanel(p) {
   });
 }
 
+function descargarExcel() {
+  var b = $('pExcel'); b.disabled = true; b.textContent = 'Preparando…';
+  Promise.all([cargarXLSX(), api('api_exportar', S.ses, S.periodo)]).then(function (x) {
+    var r = x[1], wb = XLSX.utils.book_new();
+    var hoja = function (hdr, filas, anchos, nombre) {
+      var ws = XLSX.utils.aoa_to_sheet([hdr].concat(filas));
+      ws['!cols'] = hdr.map(function (h0, i) { return { wch: anchos[i] || 16 }; });
+      ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filas.length, c: hdr.length - 1 } }) };
+      XLSX.utils.book_append_sheet(wb, ws, nombre);
+    };
+    var anchoC = r.casosHdr.map(function (h0) { return /Comentario|Cierre|Pistas|Observación/.test(h0) ? 60 : /Ruta/.test(h0) ? 45 : /Asesor|Auditor|Patrón|Resultado/.test(h0) ? 26 : 14; });
+    hoja(r.casosHdr, r.casos, anchoC, 'Auditorías');
+    hoja(r.sistemaHdr, r.sistema, [12, 17, 18, 11, 13, 30, 60, 45, 26, 28, 9, 60, 16, 20, 17, 40], 'Errores del sistema');
+    XLSX.writeFile(wb, 'Auditorias_' + r.periodo + '_' + r.hoy + '.xlsx');
+    toast('Descargado: ' + r.casos.length + ' auditorías y ' + r.sistema.length + ' errores del sistema');
+  }).catch(function (e) { toast(errMsg(e), true); }).then(function () { b.disabled = false; b.textContent = 'Descargar Excel'; });
+}
+
 /* ============================== sistema (errores que encontró la revisión automática) ============================== */
 function cargarSistema() {
   setCargando($('tSistema'), 7);
@@ -1250,9 +1305,15 @@ function cargarEstado() {
   api('api_estadoCargas', S.ses).then(function (r) {
     S.cargas = r;
     var t = clear($('tCuotas')), sk = Object.keys(r.skills);
-    t.appendChild(h('tr', null, th('Auditor', 'cAuditor'), sk.map(function (s) { return th(chipSkill(s), 'cSkillCuota', 'num'); }), th('Total', 'cTotal', 'num')));
+    t.appendChild(h('tr', null, th('Recibe hoy', 'cHoy'), th('Auditor', 'cAuditor'), sk.map(function (s) { return th(chipSkill(s), 'cSkillCuota', 'num'); }), th('Total', 'cTotal', 'num')));
     r.auditores.forEach(function (a) {
-      t.appendChild(h('tr', null, h('td', { text: a.nombre }), sk.map(function (s) { return h('td', { cls: 'num', text: a.cuotas[s] || 0 }); }), h('td', { cls: 'num' }, h('b', { text: a.meta }))));
+      var cb = h('input', { type: 'checkbox', 'aria-label': a.nombre + ' recibe casos hoy', on: { change: function () {
+        S.excluidos[a.nombre] = !this.checked; fila.classList.toggle('apagado', !this.checked); if (S.archivo) planCarga();
+      } } });
+      cb.checked = !S.excluidos[a.nombre];
+      var fila = h('tr', S.excluidos[a.nombre] ? { cls: 'apagado' } : null, h('td', null, cb), h('td', { text: a.nombre }),
+        sk.map(function (s) { return h('td', { cls: 'num', text: a.cuotas[s] || 0 }); }), h('td', { cls: 'num' }, h('b', { text: a.meta })));
+      t.appendChild(fila);
     });
     var g = clear($('tCargas'));
     if (!r.ultimas.length) g.appendChild(h('tr', null, h('td', { cls: 'muted', text: 'Todavía no se ha cargado ninguna sábana.' })));
@@ -1365,13 +1426,17 @@ function pintarFechas() {
 function diasElegidos() {
   return Array.prototype.map.call(document.querySelectorAll('#tFechas input[type=checkbox]:checked'), function (c) { return c.dataset.dia; }).sort();
 }
+/** Auditores que reciben casos en esta carga (sin los que se desmarcaron porque no trabajan hoy). */
+function audHoy() { return S.cargas.auditores.filter(function (a) { return !S.excluidos[a.nombre]; }); }
 function planCarga() {
-  var dias = diasElegidos(), aud = S.cargas.auditores;
+  var dias = diasElegidos(), aud = audHoy();
   var porDia = aud.reduce(function (s, a) { return s + a.meta; }, 0);
   var detalle = Object.keys(S.cargas.skills).map(function (s) { return S.cargas.skills[s] + ' de ' + s; }).join(' + ');
   $('dPlan').textContent = dias.length
     ? 'Se asignarán ' + porDia * dias.length + ' casos: ' + aud.length + ' auditores × ' + dias.length + (dias.length === 1 ? ' fecha' : ' fechas') + ' (' + detalle + ' por fecha).'
     : 'Elijan al menos una fecha.';
+  var fuera = S.cargas.auditores.length - aud.length;
+  if (dias.length && fuera) $('dPlan').textContent += ' ' + fuera + (fuera === 1 ? ' auditor no recibe' : ' auditores no reciben') + ' casos hoy.';
   $('dAsignar').disabled = !dias.length || !aud.length;
 }
 
@@ -1564,7 +1629,7 @@ function barajar(arr) {
 
 function asignar() {
   var dias = diasElegidos(); if (!dias.length) return;
-  var aud = S.cargas.auditores, skills = Object.keys(S.cargas.skills), filas = S.archivo.filas;
+  var aud = audHoy(), skills = Object.keys(S.cargas.skills), filas = S.archivo.filas;
   var forzar = dias.some(function (d) { return S.cargas.fechasCargadas.indexOf(d) >= 0; });
   var tapado = !!S.cargas.tapar;
   // índices para las pistas de escalamiento
@@ -1637,9 +1702,10 @@ function asignar() {
         r.repetidos ? h('div', { cls: 'small', text: r.repetidos + ' casos ya estaban asignados y no se repitieron.' }) : null,
         avisos.length ? h('div', { cls: 'small aviso', text: avisos.join(' ') }) : null));
       toast('Casos revisados y asignados');
+      S.excluidos = {};
       S.archivo = null; $('dFechas').classList.add('hidden'); $('dEstado').textContent = '';
       cargarEstado();
-      api('api_bandeja', S.ses).then(aplicarBandeja);
+      api('api_bandeja', S.ses, S.como).then(aplicarBandeja);
     })
     .catch(function (e) { toast(errMsg(e), true); })
     .then(function () { btn.textContent = 'Asignar casos'; if (S.archivo) planCarga(); });
@@ -1672,6 +1738,8 @@ $('cGuardar').addEventListener('click', function () { guardar(false); });
 $('cGuardarSig').addEventListener('click', function () { guardar(true); });
 ['iPatron', 'iRuta', 'iObs'].forEach(function (id) { $(id).addEventListener('input', validarForm); $(id).addEventListener('change', validarForm); });
 document.querySelectorAll('#pPeriodo button').forEach(function (b) { b.addEventListener('click', function () { S.periodo = b.dataset.p; cargarPanel(); }); });
+$('pExcel').addEventListener('click', descargarExcel);
+$('uComo').addEventListener('change', cambiarComo);
 document.querySelectorAll('#sPeriodo button').forEach(function (b) { b.addEventListener('click', function () { S.periodoSis = b.dataset.p; cargarSistema(); }); });
 // ayudas: al pasar el cursor (o al llegar con el teclado) por algo que tiene data-tip
 document.addEventListener('mouseover', function (e) {
