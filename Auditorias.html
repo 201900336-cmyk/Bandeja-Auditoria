@@ -249,6 +249,9 @@ td.rojo{color:var(--accent);font-weight:700}
 .btn.negro:hover{background:#000}
 .resultado{border-left:4px solid #1a1a1a}
 .txtrojo{color:var(--accent);font-weight:700}
+.selmes{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;font-weight:600;color:var(--muted)}
+.selmes.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.vs{font-variant-numeric:tabular-nums}
 .ucomo{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#cfcfcf;cursor:default}
 .ucomo select{background:#2a2a2e;color:#fff;border:1px solid #4a4a50;border-radius:6px;padding:4px 6px;font-size:13px}
 .comoaviso{border-left:4px solid var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -398,6 +401,7 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
       <div class="toolbar">
         <h2 class="grow">Dashboard de calidad</h2>
         <button class="btn negro hidden" id="pExcel" data-tip="AYUDA:excel">Descargar Excel</button>
+        <select id="pMes" class="selmes" data-tip="AYUDA:pMes" aria-label="Elegir un mes"><option value="">Elegir mes…</option></select>
         <div class="seg" id="pPeriodo">
           <button data-p="hoy">Hoy</button><button data-p="semana">Esta semana</button><button data-p="mes" class="on">Este mes</button><button data-p="todo">Todo</button>
         </div>
@@ -677,6 +681,8 @@ var AYUDA = {
   sEstado: 'NO PROCEDENTE: cuenta para el asesor.\nPROCEDENTE: el supervisor lo revisó y lo pasó a procedente; ya no cuenta.\nToque la fila para ver el caso completo.',
   excel: 'Descarga un Excel con todo lo del equipo en el período elegido (Hoy, Esta semana, Este mes o Todo):\n• Auditorías: cada caso asignado, auditado o pendiente, con P1 a P4, resultado, patrón, observación y quién lo auditó.\n• No procedentes del sistema: los casos que marcó la revisión automática y su revisión.',
   cHoy: 'Desmarca a quien no trabaja hoy (libre o de vacaciones): ese día no recibe casos. Los demás reciben su cantidad normal.',
+  pMes: 'Elige un mes completo para ver sus cifras, la tabla de lo auditado y el Excel.\nAl ver un mes («Este mes» o uno de la lista), cada indicador se compara con el mes anterior (M2M).',
+  dVs: 'Cambio del % no procedente contra el mes anterior, en puntos (pts). ▲ subió, ▼ bajó.',
   como: 'Abre la bandeja de un compañero para ayudarle con sus casos. El caso sigue siendo de esa persona, pero queda tu nombre como quien lo auditó.\nUna auditoría ya hecha solo la puede cambiar quien la hizo o el supervisor.',
   sObs: '«Es procedente» pide escribir por qué: el caso deja de contar y con eso se afina la regla.\n«Confirmar no procedente» deja constancia de que el supervisor lo revisó.',
   // cargar sábana
@@ -1103,10 +1109,18 @@ function cargarHechas() {
 }
 
 /* ============================== dashboard ============================== */
+var MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+function nombreMes(ym) { return ym ? MESES[+ym.slice(5, 7) - 1] + ' ' + ym.slice(0, 4) : ''; }
+function mesAnterior(ym) { var y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1; if (!m) { y--; m = 12; } return y + '-' + ('0' + m).slice(-2); }
+/** Mes del período: «mes» = el actual; «mes:2026-09» = ese; los demás no son un mes. */
+function mesDelPeriodo(per) { if (per === 'mes') return (S.hoy || '').slice(0, 7); var m = /^mes:(\d{4}-\d{2})$/.exec(per || ''); return m ? m[1] : ''; }
 function cargarPanel() {
   setCargando($('tPanel'), 7);
   document.querySelectorAll('#pPeriodo button').forEach(function (b) { b.classList.toggle('on', b.dataset.p === S.periodo); });
-  api('api_panel', S.ses, S.periodo).then(pintarPanel).catch(function (e) { toast(errMsg(e), true); });
+  $('pMes').classList.toggle('on', /^mes:/.test(S.periodo));
+  var mes = mesDelPeriodo(S.periodo), ant = mes ? mesAnterior(mes) : '';
+  Promise.all([api('api_panel', S.ses, S.periodo), ant ? api('api_panel', S.ses, 'mes:' + ant) : Promise.resolve(null)])
+    .then(function (x) { pintarPanel(x[0], x[1], ant); }).catch(function (e) { toast(errMsg(e), true); });
   setCargando($('tActividad'), 8);
   api('api_actividad', S.ses, S.periodo).then(function (r) { S.actividad = r.casos; S.actividadTotal = r.total; pintarActividad(); })
     .catch(function (e) { toast(errMsg(e), true); });
@@ -1119,9 +1133,34 @@ function tile(color, lbl, tip, val, subs, x) {
   (subs || []).forEach(function (txt) { if (txt) t.appendChild(h('div', { cls: 'sub', text: txt })); });
   return t;
 }
-function pintarPanel(p) {
-  var nomP = { hoy: 'hoy', semana: 'esta semana', mes: 'este mes', todo: 'desde el inicio' }[p.periodo];
+function pintarPanel(p, q, antYm) {
+  var nomP = { hoy: 'hoy', semana: 'esta semana', mes: 'este mes', todo: 'desde el inicio' }[p.periodo] || ('en ' + nombreMes(mesDelPeriodo(p.periodo)));
   var e = p.equipo, d = p.dash, tot = d.total;
+  // meses con datos para el selector
+  var sel = $('pMes'), elegido = /^mes:/.test(S.periodo) ? S.periodo.slice(4) : '';
+  clear(sel).appendChild(h('option', { value: '', text: 'Elegir mes…' }));
+  (p.meses || []).forEach(function (ym) { sel.appendChild(h('option', { value: ym, text: nombreMes(ym).charAt(0).toUpperCase() + nombreMes(ym).slice(1) })); });
+  sel.value = elegido;
+  // M2M: el mismo cálculo para este mes y el anterior
+  var met = function (pp) {
+    var t = pp.dash.total, au = (t.auditadas || 0) + (t.errSistema || 0), np = (t.mal || 0) + (t.errSistema || 0), dec = (t.bien || 0) + np;
+    return { casos: t.casos || 0, aud: au, pProc: dec ? (t.bien || 0) / dec : null, pNp: dec ? np / dec : null, cumpl: pp.equipo.cumplimiento, est: t.errorEstimado };
+  };
+  var A = q ? met(q) : null, mAnt = antYm ? MESES[+antYm.slice(5, 7) - 1] : '';
+  var vsCant = function (a, b) {
+    if (!A) return '';
+    if (!b) return 'vs ' + mAnt + ': sin datos';
+    var dd = (a - b) / b;
+    return 'vs ' + mAnt + ': ' + (dd > 0 ? '▲ ' : dd < 0 ? '▼ ' : '= ') + pct1(Math.abs(dd)) + ' (' + miles(b) + ')';
+  };
+  var vsPts = function (a, b) {
+    if (!A) return '';
+    if (b == null) return 'vs ' + mAnt + ': sin datos';
+    if (a == null) return '';
+    var dd = Math.round((a - b) * 1000) / 10;
+    return 'vs ' + mAnt + ': ' + (dd > 0 ? '▲ ' : dd < 0 ? '▼ ' : '= ') + String(Math.abs(dd)) + ' pts (' + pct1(b) + ')';
+  };
+  var M = met(p);
   var metaHoy = Math.max(e.meta || 0, e.hoyAsignadas || 0);
   var auditados = (tot.auditadas || 0) + (tot.errSistema || 0);
   var noProc = (tot.mal || 0) + (tot.errSistema || 0);
@@ -1131,27 +1170,29 @@ function pintarPanel(p) {
   var k = clear($('pTiles'));
   k.appendChild(tile('negro', 'Casos en las sábanas', 'tCasos', miles(tot.casos),
     [tot.casos ? d.skills.filter(function (x) { return x.casos; }).map(function (x) { return chipTxt(x.skill) + ': ' + miles(x.casos); }).join(', ') : 'Se llena al cargar la próxima sábana',
-     tot.casos ? 'Cargados ' + nomP : '']));
+     tot.casos ? 'Cargados ' + nomP : '', vsCant(M.casos, A && A.casos)]));
   k.appendChild(tile('gris', 'Auditados', 'tAuditados', miles(auditados),
     [tot.casos ? pct1(auditados / tot.casos) + ' de los casos de las sábanas' : '', 'Equipo: ' + miles(tot.auditadas) + ', sistema: ' + miles(tot.errSistema),
-     tot.consultar ? tot.consultar + ' para consultar a Calidad' : '']));
+     tot.consultar ? tot.consultar + ' para consultar a Calidad' : '', vsCant(M.aud, A && A.aud)]));
   k.appendChild(tile('negro', 'Procedentes', 'tProc', miles(tot.bien),
-    [decididos ? pct1(tot.bien / decididos) + ' de lo auditado' : 'Todavía sin auditorías'], decididos ? tot.bien / decididos : undefined));
+    [decididos ? pct1(tot.bien / decididos) + ' de lo auditado' : 'Todavía sin auditorías', vsPts(M.pProc, A && A.pProc)], decididos ? tot.bien / decididos : undefined));
   k.appendChild(tile('rojo', 'No procedentes', 'tNoProc', miles(noProc),
     [decididos ? pct1(noProc / decididos) + ' de lo auditado' : '', 'Equipo: ' + miles(tot.mal) + ', sistema: ' + miles(tot.errSistema),
-     tot.descartados ? tot.descartados + ' del sistema pasados a procedente' : ''], decididos ? noProc / decididos : undefined));
+     tot.descartados ? tot.descartados + ' del sistema pasados a procedente' : '', vsPts(M.pNp, A && A.pNp)], decididos ? noProc / decididos : undefined));
   k.appendChild(tile('negro', 'Cumplimiento', 'tCumpl', pct(e.cumplimiento),
-    ['Hoy: ' + e.hoyHechas + (metaHoy ? ' de ' + metaHoy : ''), 'Pendientes: ' + e.pendientes + (e.atrasadas ? ' (' + e.atrasadas + ' atrasados)' : '')], e.cumplimiento));
+    ['Hoy: ' + e.hoyHechas + (metaHoy ? ' de ' + metaHoy : ''), 'Pendientes: ' + e.pendientes + (e.atrasadas ? ' (' + e.atrasadas + ' atrasados)' : ''), vsPts(M.cumpl, A && A.cumpl)], e.cumplimiento));
   var muestra = (tot.bien || 0) + (tot.mal || 0);
   k.appendChild(tile('rojo2', '% no procedente estimado', 'tEstimado', pct1(tot.errorEstimado),
     [tot.casos ? 'En todos los casos de las sábanas' : 'Falta cargar una sábana',
-     tot.casos && muestra < 30 ? 'Muestra chica (' + muestra + ' auditorías del equipo): se afina con más' : '']));
+     tot.casos && muestra < 30 ? 'Muestra chica (' + muestra + ' auditorías del equipo): se afina con más' : '', vsPts(M.est, A && A.est)]));
 
   // por skill
   var ts = clear($('tSkills'));
   ts.appendChild(h('tr', null, th('Skill', 'dSkill'), th('Casos en la sábana', 'dCasos', 'num'), th('Auditados', 'dAud', 'num'),
     th('% auditado', 'dPctAud', 'num'), th('Procedentes', 'dProc', 'num'), th('No proc. sistema', 'dNpSis', 'num'), th('No proc. equipo', 'dNpEq', 'num'),
-    th('% no procedente', 'dPctNp', 'num'), th('Cumplimiento', 'dCumpl'), th('% no proc. estimado', 'dEstimado', 'num')));
+    th('% no procedente', 'dPctNp', 'num'), A ? th('vs ' + mAnt, 'dVs', 'num') : null, th('Cumplimiento', 'dCumpl'), th('% no proc. estimado', 'dEstimado', 'num')));
+  var pNpDe = function (x) { if (!x) return null; var np = (x.mal || 0) + (x.errSistema || 0), dec = (x.bien || 0) + np; return dec ? np / dec : null; };
+  var skAnt = function (sk) { return q ? (sk === 'Total' ? q.dash.total : q.dash.skills.filter(function (y) { return y.skill === sk; })[0]) : null; };
   function filaSkill(x, total) {
     var b = h('div', { cls: 'bar' }, h('i')); setBar(b, x.cumplimiento);
     var au = (x.auditadas || 0) + (x.errSistema || 0), np = (x.mal || 0) + (x.errSistema || 0), dec = (x.bien || 0) + np, mu = (x.bien || 0) + (x.mal || 0);
@@ -1164,11 +1205,17 @@ function pintarPanel(p) {
       h('td', { cls: 'num' + (x.errSistema ? ' rojo' : ''), text: miles(x.errSistema) }),
       h('td', { cls: 'num' + (x.mal ? ' rojo' : ''), text: miles(x.mal) }),
       h('td', { cls: 'num', 'data-tip': dec ? np + ' no procedentes de ' + dec + ' auditados con resultado' : null }, h('b', { text: dec ? pct1(np / dec) : '–' })),
+      A ? h('td', { cls: 'num vs', text: (function () {
+        var a = dec ? np / dec : null, bb = pNpDe(skAnt(total ? 'Total' : x.skill));
+        if (a == null || bb == null) return '–';
+        var dd = Math.round((a - bb) * 1000) / 10;
+        return (dd > 0 ? '▲ ' : dd < 0 ? '▼ ' : '= ') + Math.abs(dd) + ' pts';
+      })() }) : null,
       h('td', null, h('div', { cls: 'cumpl' }, b, h('b', { text: pct(x.cumplimiento) }))),
       h('td', { cls: 'num', 'data-tip': x.casos ? 'Con ' + mu + ' auditorías del equipo' + (mu < 30 ? ': muestra chica, todavía no es confiable.' : '.') : null },
         h('span', { cls: x.casos && mu < 30 ? 'muted' : null, text: pct1(x.errorEstimado) })));
   }
-  if (!d.skills.length) ts.appendChild(h('tr', null, h('td', { colspan: 10, cls: 'muted', text: 'Todavía no hay datos ' + nomP + '.' })));
+  if (!d.skills.length) ts.appendChild(h('tr', null, h('td', { colspan: A ? 11 : 10, cls: 'muted', text: 'Todavía no hay datos ' + nomP + '.' })));
   d.skills.forEach(function (x) { ts.appendChild(filaSkill(x)); });
   if (d.skills.length > 1) ts.appendChild(filaSkill(tot, true));
 
@@ -1295,7 +1342,7 @@ function descargarExcel() {
     var anchoC = r.casosHdr.map(function (h0) { return /Comentario|Cierre|Pistas|Observación/.test(h0) ? 60 : /Ruta/.test(h0) ? 45 : /Asesor|Auditor|Patrón|Resultado/.test(h0) ? 26 : 14; });
     hoja(r.casosHdr, r.casos, anchoC, 'Auditorías');
     hoja(r.sistemaHdr, r.sistema, [12, 17, 18, 11, 16, 30, 60, 45, 26, 28, 9, 60, 22, 20, 17, 40], 'No procedentes del sistema');
-    XLSX.writeFile(wb, 'Auditorias_' + r.periodo + '_' + r.hoy + '.xlsx');
+    XLSX.writeFile(wb, 'Auditorias_' + String(r.periodo).replace(':', '_') + '_' + r.hoy + '.xlsx');
     toast('Descargado: ' + r.casos.length + ' auditorías y ' + r.sistema.length + ' no procedentes del sistema');
   }).catch(function (e) { toast(errMsg(e), true); }).then(function () { b.disabled = false; b.textContent = 'Descargar Excel'; });
 }
@@ -1823,6 +1870,7 @@ $('cGuardarSig').addEventListener('click', function () { guardar(true); });
 ['iPatron', 'iRuta', 'iObs'].forEach(function (id) { $(id).addEventListener('input', validarForm); $(id).addEventListener('change', validarForm); });
 document.querySelectorAll('#pPeriodo button').forEach(function (b) { b.addEventListener('click', function () { S.periodo = b.dataset.p; cargarPanel(); }); });
 $('pExcel').addEventListener('click', descargarExcel);
+$('pMes').addEventListener('change', function () { S.periodo = this.value ? 'mes:' + this.value : 'mes'; cargarPanel(); });
 $('uComo').addEventListener('change', cambiarComo);
 document.querySelectorAll('#sPeriodo button').forEach(function (b) { b.addEventListener('click', function () { S.periodoSis = b.dataset.p; cargarSistema(); }); });
 // ayudas: al pasar el cursor (o al llegar con el teclado) por algo que tiene data-tip
