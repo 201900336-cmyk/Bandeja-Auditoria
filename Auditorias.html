@@ -716,7 +716,7 @@ var AYUDA = {
   sPorque: 'Qué leyó el sistema en el comentario y por qué no cuadra con la ruta.',
   sEstado: 'NO PROCEDENTE: cuenta para el asesor.\nPROCEDENTE: el supervisor lo revisó y lo pasó a procedente; ya no cuenta.\nToque la fila para ver el caso completo.',
   excel: 'Descarga un Excel con todo lo del equipo en el período elegido (Hoy, Esta semana, Este mes o Todo):\n• Auditorías: cada caso asignado, auditado o pendiente, con P1 a P4, resultado, patrón, observación y quién lo auditó.\n• No procedentes del sistema: los casos que marcó la revisión automática y su revisión.',
-  cHoy: 'Desmarca a quien no trabaja hoy (libre o de vacaciones): ese día no recibe casos. Los demás reciben su cantidad normal.',
+  cHoy: 'Desmarca a quien no trabaja hoy (libre o de vacaciones): ese día no recibe casos. Los demás reciben su cantidad normal.\nLos checks se quedan así todo el día en esta computadora, aunque suban otra sábana o recarguen la página. Al día siguiente vuelven a salir todos marcados.',
   pMes: 'Elige un mes completo para ver sus cifras, la tabla de lo auditado y el Excel.\nAl ver un mes («Este mes» o uno de la lista), cada indicador se compara con el mes anterior (M2M).',
   dVs: 'Cambio del % no procedente contra el mes anterior, en puntos (pts). ▲ subió, ▼ bajó.',
   como: 'Abre la bandeja de un compañero para ayudarle con sus casos. El caso sigue siendo de esa persona, pero queda tu nombre como quien lo auditó.\nUna auditoría ya hecha solo la puede cambiar quien la hizo o el supervisor.',
@@ -1648,11 +1648,12 @@ var OBLIG = ['fecha', 'caso', 'tipo', 'cac', 'n2', 'n3', 'n4', 'res', 'com', 'ge
 function cargarEstado() {
   api('api_estadoCargas', S.ses).then(function (r) {
     S.cargas = r;
+    leerExcluidos(r.hoy);
     var t = clear($('tCuotas')), sk = Object.keys(r.skills);
     t.appendChild(h('tr', null, th('Recibe hoy', 'cHoy'), th('Auditor', 'cAuditor'), sk.map(function (s) { return th(chipSkill(s), 'cSkillCuota', 'num'); }), th('Total', 'cTotal', 'num')));
     r.auditores.forEach(function (a) {
       var cb = h('input', { type: 'checkbox', 'aria-label': a.nombre + ' recibe casos hoy', on: { change: function () {
-        S.excluidos[a.nombre] = !this.checked; fila.classList.toggle('apagado', !this.checked); if (S.archivo) planCarga();
+        S.excluidos[a.nombre] = !this.checked; guardarExcluidos(); fila.classList.toggle('apagado', !this.checked); if (S.archivo) planCarga();
       } } });
       cb.checked = !S.excluidos[a.nombre];
       var fila = h('tr', S.excluidos[a.nombre] ? { cls: 'apagado' } : null, h('td', null, cb), h('td', { text: a.nombre }),
@@ -1858,16 +1859,35 @@ function diasElegidos() {
   return Array.prototype.map.call(document.querySelectorAll('#tFechas input[type=checkbox]:checked'), function (c) { return c.dataset.dia; }).sort();
 }
 /** Auditores que reciben casos en esta carga (sin los que se desmarcaron porque no trabajan hoy). */
+/* los checks de «Recibe hoy» se recuerdan en esta computadora durante el día (aunque recarguen la página) */
+var LLAVE_EXCLUIDOS = 'bandejaQflow.recibeHoy';
+function leerExcluidos(hoy) {
+  try {
+    var g = JSON.parse(localStorage.getItem(LLAVE_EXCLUIDOS) || 'null');
+    if (g && g.fecha === hoy) { if (!Object.keys(S.excluidos).length) S.excluidos = g.fuera || {}; }
+    else { S.excluidos = {}; localStorage.removeItem(LLAVE_EXCLUIDOS); }
+  } catch (e) { /* sin almacenamiento: solo en esta sesión */ }
+  S.excluidosDia = hoy;
+}
+function guardarExcluidos() {
+  var fuera = {};
+  Object.keys(S.excluidos).forEach(function (n) { if (S.excluidos[n]) fuera[n] = true; });
+  S.excluidos = fuera;
+  try { localStorage.setItem(LLAVE_EXCLUIDOS, JSON.stringify({ fecha: S.excluidosDia || (S.cargas && S.cargas.hoy), fuera: fuera })); } catch (e) { /* sin almacenamiento */ }
+}
 function audHoy() { return S.cargas.auditores.filter(function (a) { return !S.excluidos[a.nombre]; }); }
 function planCarga() {
   var dias = diasElegidos(), aud = audHoy();
   var porDia = aud.reduce(function (s, a) { return s + a.meta; }, 0);
-  var detalle = Object.keys(S.cargas.skills).map(function (s) { return S.cargas.skills[s] + ' de ' + s; }).join(' + ');
+  var detalle = Object.keys(S.cargas.skills).map(function (s) {
+    var n = aud.reduce(function (t, a) { return t + (a.cuotas[s] || 0); }, 0);
+    return n + ' de ' + (/movil/i.test(s) ? 'Móvil' : /nivel 1/i.test(s) ? 'Fijo' : s);
+  }).join(' + ');
   $('dPlan').textContent = dias.length
     ? 'Se asignarán ' + porDia * dias.length + ' casos: ' + aud.length + ' auditores × ' + dias.length + (dias.length === 1 ? ' fecha' : ' fechas') + ' (' + detalle + ' por fecha).'
     : 'Elijan al menos una fecha.';
-  var fuera = S.cargas.auditores.length - aud.length;
-  if (dias.length && fuera) $('dPlan').textContent += ' ' + fuera + (fuera === 1 ? ' auditor no recibe' : ' auditores no reciben') + ' casos hoy.';
+  var fuera = S.cargas.auditores.filter(function (a) { return S.excluidos[a.nombre]; }).map(function (a) { return a.nombre; });
+  if (dias.length) $('dPlan').textContent += fuera.length ? ' No reciben casos hoy: ' + fuera.join(', ') + '.' : ' Todos reciben casos hoy.';
   $('dAsignar').disabled = !dias.length || !aud.length;
   var ya = dias.some(function (d) { return S.cargas.fechasCargadas.indexOf(d) >= 0; });
   $('dCompletar').classList.toggle('hidden', !(ya && S.user.rol === 'SUPERVISOR'));
@@ -2172,8 +2192,7 @@ function asignar() {
         h('ul', { style: 'margin:6px 0 0 18px;padding:0' }, Object.keys(r.porAuditor).map(function (n) { return h('li', { text: n + ': ' + r.porAuditor[n] + ' casos' }); })),
         r.repetidos ? h('div', { cls: 'small', text: r.repetidos + ' casos ya estaban asignados y no se repitieron.' }) : null,
         avisos.length ? h('div', { cls: 'small aviso', text: avisos.join(' ') }) : null));
-      toast('Casos revisados y asignados');
-      S.excluidos = {};
+      toast('Casos revisados y asignados');   // los checks de «Recibe hoy» se quedan como estaban (otra sábana del mismo día)
       S.archivo = null; $('dFechas').classList.add('hidden'); $('dEstado').textContent = '';
       cargarEstado();
       api('api_bandeja', S.ses, S.como).then(aplicarBandeja);
