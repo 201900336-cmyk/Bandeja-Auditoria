@@ -108,6 +108,7 @@ details.cierre summary{cursor:pointer;font-weight:600;color:var(--ink)}
 .opt.on.no{background:var(--bad);border-color:var(--bad);color:#fff}
 .opt.on.duda{background:var(--gris);border-color:var(--gris);color:#fff}
 .fld{margin-bottom:10px}
+.tile .val .unid{font-size:16px;font-weight:600;letter-spacing:0}
 .fld label{display:block;font-weight:700;margin-bottom:4px}
 .fld .req{color:var(--bad);font-weight:700}
 .rchips{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
@@ -691,7 +692,7 @@ var AYUDA = {
   // dashboard: indicadores
   tCasos: 'Todos los casos de Fijo y Móvil de las sábanas que se cargaron en el período. Se van sumando cada día.',
   tCumpl: 'Auditadas ÷ asignadas del período. La meta es 100 %.',
-  tEstimado: '% de no procedentes estimado en todos los casos de la sábana, juntando las dos revisiones:\n(no procedentes del sistema + % no procedente del equipo × casos que el sistema no marcó) ÷ casos de la sábana.',
+  tEstimado: 'Responde: si alguien revisara TODOS los casos de las sábanas, ¿cuántos de cada 100 saldrían mal tipificados?\nNadie puede revisarlos todos, así que se estima como una encuesta: se suman los no procedentes del sistema (los revisa todos) y se aplica el % no procedente que encontró el equipo en su muestra al resto de los casos. Se calcula por separado en Fijo y Móvil.\nSi baja de un mes a otro, los asesores están tipificando mejor; si sube, peor.\nFórmula: (no procedentes del sistema + % no procedente del equipo × casos que el sistema no marcó) ÷ casos de la sábana.',
   // dashboard: por skill
   dSkill: 'Cola de la sábana.',
   dCasos: 'Casos de este skill en las sábanas cargadas en el período.',
@@ -1373,9 +1374,13 @@ function pintarPanel(p, q, antYm) {
   k.appendChild(tile('negro', 'Cumplimiento', 'tCumpl', pct(e.cumplimiento),
     ['Hoy: ' + e.hoyHechas + (metaHoy ? ' de ' + metaHoy : ''), 'Pendientes: ' + e.pendientes + (e.atrasadas ? ' (' + e.atrasadas + ' atrasados)' : ''), vsPts(M.cumpl, A && A.cumpl)], e.cumplimiento));
   var muestra = (tot.bien || 0) + (tot.mal || 0);
-  k.appendChild(tile('rojo2', '% no procedente estimado', 'tEstimado', pct1(tot.errorEstimado),
-    [tot.casos ? 'En todos los casos de las sábanas' : 'Falta cargar una sábana',
+  var deCada = tot.errorEstimado == null ? '–' : '≈ ' + Math.round(tot.errorEstimado * 100);
+  var delP = { hoy: ' de hoy', semana: ' de la semana', todo: '' }[p.periodo];
+  if (delP == null) delP = ' del mes';
+  k.appendChild(tile('rojo2', 'De cada 100 casos' + delP + ', ¿cuántos estarían mal?', 'tEstimado', deCada,
+    [tot.casos ? 'Estimado en todos los casos de las sábanas' + (tot.errorEstimado == null ? '' : ' (' + pct1(tot.errorEstimado) + ')') : 'Falta cargar una sábana',
      tot.casos && muestra < 30 ? 'Muestra chica (' + muestra + ' auditorías del equipo): se afina con más' : '', vsPts(M.est, A && A.est)]));
+  if (tot.errorEstimado != null) k.lastChild.querySelector('.val').appendChild(h('span', { cls: 'unid', text: ' de cada 100' }));
 
   // por skill
   var ts = clear($('tSkills'));
