@@ -493,7 +493,7 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
           <ol class="steps" style="margin-top:10px">
             <li>Elijan el archivo de la sábana (.xlsx o .csv, con encabezados). Puede ser la del día o la del mes acumulado.</li>
             <li>Revisen las fechas: se marca sola la más reciente que no se ha cargado.</li>
-            <li>Toquen «Asignar casos». Primero el sistema revisa todos los casos y deja los no procedentes claros en la pestaña Sistema; después a cada auditor le tocan sus casos del día. Si una fecha ya se cargó, no se repite.</li>
+            <li>Toquen «Asignar casos». Primero el sistema revisa todos los casos y deja los no procedentes claros en la pestaña Sistema; después a cada auditor le tocan sus casos del día (sin los de Trámites cortos: llamada transferida o no efectiva, que solo revisa el sistema). Si una fecha ya se cargó, no se repite.</li>
           </ol>
           <label class="drop" id="dZona" style="display:block;margin-top:12px;cursor:pointer">
             <input id="dArchivo" type="file" accept=".xlsx,.xls,.csv" class="hidden">
@@ -2110,6 +2110,10 @@ function reglaAbandono(r, tapado) {
 /** Todas las reglas: el primer hallazgo, o null si el caso pasa la revisión automática. */
 function revisarCaso(r, tapado) { return reglaAbandono(r, tapado) || reglaTecnologia(r); }
 
+/** Rutas que no se reparten a los auditores (hay poco que auditar): Trámites cortos › Información
+ *  (Llamada transferida y Llamada no efectiva, con «Cliente corto», «Falta de información», etc.).
+ *  La revisión automática sí las revisa (regla «Abandono o corte con motivo escrito»). */
+function noSeAsigna(r) { return nrm(r.mercado) === 'tramites cortos'; }
 function azar(n) {
   var a = new Uint32Array(1); window.crypto.getRandomValues(a); return a[0] % n;
 }
@@ -2132,7 +2136,7 @@ function asignar() {
   });
   var skillDe = {};
   skills.forEach(function (s) { skillDe[nrm(s)] = s; });
-  var casos = [], resumen = {}, avisos = [], sistema = [], universo = [], porRegla = {};
+  var casos = [], resumen = {}, avisos = [], sistema = [], universo = [], porRegla = {}, sinAsignar = 0;
   dias.forEach(function (d) {
     resumen[d] = {};
     // 1. revisión automática: todas las tipificaciones del día de los skills auditados.
@@ -2151,14 +2155,16 @@ function asignar() {
     });
     // 2. reparto por skill de los casos que quedan, por turnos (si faltan casos, a nadie le toca de más)
     skills.forEach(function (s) {
-      var vistos = {}, pool = [], total = 0, errores = 0;
+      var vistos = {}, pool = [], total = 0, errores = 0, cortos = 0;
       filas.forEach(function (r) {
         if (r.dia !== d || nrm(r.cac) !== nrm(s) || vistos[r.caso]) return;
         vistos[r.caso] = 1; total++;
         if (marcados[r.caso]) { errores++; return; }
+        if (noSeAsigna(r)) { cortos++; return; }   // Trámites cortos: solo los revisa el sistema
         pool.push(r);
       });
       resumen[d][s] = total;
+      sinAsignar += cortos;
       barajar(pool);
       var cupo = aud.map(function (a) { return a.cuotas[s] || 0; }), dados = aud.map(function () { return 0; }), i = 0, avanzo = true;
       while (i < pool.length && avanzo) {
@@ -2190,6 +2196,7 @@ function asignar() {
           h('span', { cls: 'txtrojo', text: sistema.length + (sistema.length === 1 ? ' no procedente' : ' no procedentes') }), reglas ? ' (' + reglas + ')' : '',
           sistema.length ? '. Quedan en la pestaña Sistema y no se asignaron a nadie.' : '.'),
         h('ul', { style: 'margin:6px 0 0 18px;padding:0' }, Object.keys(r.porAuditor).map(function (n) { return h('li', { text: n + ': ' + r.porAuditor[n] + ' casos' }); })),
+        sinAsignar ? h('div', { cls: 'small', style: 'margin-top:6px', text: miles(sinAsignar) + ' casos de Trámites cortos (llamada transferida o no efectiva) no se asignaron: esos solo los revisa el sistema.' }) : null,
         r.repetidos ? h('div', { cls: 'small', text: r.repetidos + ' casos ya estaban asignados y no se repitieron.' }) : null,
         avisos.length ? h('div', { cls: 'small aviso', text: avisos.join(' ') }) : null));
       toast('Casos revisados y asignados');   // los checks de «Recibe hoy» se quedan como estaban (otra sábana del mismo día)
