@@ -645,9 +645,9 @@ function rutaDe(r) { return [r.mercado, r.n2, r.n3, r.n4].filter(function (x) { 
 /* Qué es cada columna o campo, qué hay que llenar y por qué. Se usan con data-tip="AYUDA:clave". */
 var AYUDA = {
   aRes: 'Resultado de P1 a P4.',
-  aQuien: 'Quien hizo la auditoría (aunque el caso sea de otro compañero). «Sistema» son los que marcó la revisión automática antes de asignar.',
+  aQuien: 'Quien hizo la auditoría (aunque el caso sea de otro compañero). Los marcados «revisión automática» son los no procedentes que encontró el sistema antes de asignar (salen con el nombre de CONFIG › AUDITOR_SISTEMA).',
   aFecha: 'Cuándo se guardó la auditoría.',
-  actividad: 'Las auditorías del período del equipo y los no procedentes que marcó el sistema (sale «Sistema» en «Auditado por»), de lo más reciente a lo más viejo, como en el Excel.\nToque una fila para abrir el caso y darle una segunda revisada. Una auditoría solo la cambia quien la hizo o el supervisor.',
+  actividad: 'Las auditorías del período del equipo y los no procedentes que marcó la revisión automática (salen con el nombre de CONFIG › AUDITOR_SISTEMA en «Auditado por»), de lo más reciente a lo más viejo, como en el Excel.\nToque una fila para abrir el caso y darle una segunda revisada. Una auditoría solo la cambia quien la hizo o el supervisor.',
   asesoresNP: 'No procedentes del sistema + no procedentes del equipo, por asesor.',
   frecuentes: 'Motivos de no procedente que encontró el equipo y reglas del sistema, juntos.',
   porRegla: 'Cuántos no procedentes encontró cada regla automática. «Pasados a procedente» son los que el supervisor revisó y marcó «Es procedente»: no cuentan.',
@@ -715,7 +715,7 @@ var AYUDA = {
   sRegla: 'Regla automática que encontró el no procedente.',
   sPorque: 'Qué leyó el sistema en el comentario y por qué no cuadra con la ruta.',
   sEstado: 'NO PROCEDENTE: cuenta para el asesor.\nPROCEDENTE: el supervisor lo revisó y lo pasó a procedente; ya no cuenta.\nToque la fila para ver el caso completo.',
-  excel: 'Descarga un Excel con todo lo del equipo en el período elegido (Hoy, Esta semana, Este mes o Todo):\n• Auditorías: cada caso asignado, auditado o pendiente, con P1 a P4, resultado, patrón, observación y quién lo auditó.\n• No procedentes del sistema: los casos que marcó la revisión automática y su revisión.',
+  excel: 'Descarga un Excel con todo el período elegido (Hoy, Esta semana, Este mes o Todo), en una sola hoja:\n• Cada caso asignado al equipo, auditado o pendiente, con P1 a P4, resultado, patrón, observación y quién lo auditó.\n• Los casos que marcó la revisión automática (Origen = «Revisión automática»), con la regla y la revisión del supervisor.\nFiltren la columna «Origen» o «Auditado por» para separarlos.',
   cHoy: 'Desmarca a quien no trabaja hoy (libre o de vacaciones): ese día no recibe casos. Los demás reciben su cantidad normal.\nLos checks se quedan así todo el día en esta computadora, aunque suban otra sábana o recarguen la página. Al día siguiente vuelven a salir todos marcados.',
   pMes: 'Elige un mes completo para ver sus cifras, la tabla de lo auditado y el Excel.\nAl ver un mes («Este mes» o uno de la lista), cada indicador se compara con el mes anterior (M2M).',
   dVs: 'Cambio del % no procedente contra el mes anterior, en puntos (pts). ▲ subió, ▼ bajó.',
@@ -1307,7 +1307,7 @@ function cargarPanel() {
   Promise.all([api('api_panel', S.ses, S.periodo), ant ? api('api_panel', S.ses, 'mes:' + ant) : Promise.resolve(null)])
     .then(function (x) { pintarPanel(x[0], x[1], ant); }).catch(function (e) { toast(errMsg(e), true); });
   setCargando($('tActividad'), 8);
-  api('api_actividad', S.ses, S.periodo).then(function (r) { S.actividad = r.casos; S.actividadTotal = r.total; S.actividadSis = r.sistema || []; S.actividadSisTotal = r.totalSistema || 0; pintarActividad(); })
+  api('api_actividad', S.ses, S.periodo).then(function (r) { S.actividad = r.casos; S.actividadTotal = r.total; S.actividadSis = r.sistema || []; S.actividadSisTotal = r.totalSistema || 0; if (r.nombreSistema) S.nomSis = r.nombreSistema; pintarActividad(); })
     .catch(function (e) { toast(errMsg(e), true); });
 }
 function tile(color, lbl, tip, val, subs, x) {
@@ -1318,7 +1318,14 @@ function tile(color, lbl, tip, val, subs, x) {
   (subs || []).forEach(function (txt) { if (txt) t.appendChild(h('div', { cls: 'sub', text: txt })); });
   return t;
 }
+/** Totales que se ven: equipo + revisión automática. Los del sistema que el supervisor pasó a procedente
+ *  («descartados») cuentan como auditados y procedentes (así cuadra con el Excel). */
+function cuentas(x) {
+  var desc = x.descartados || 0, np = (x.mal || 0) + (x.errSistema || 0), proc = (x.bien || 0) + desc;
+  return { au: (x.auditadas || 0) + (x.errSistema || 0) + desc, np: np, proc: proc, dec: proc + np };
+}
 function pintarPanel(p, q, antYm) {
+  if (p.nombreSistema) S.nomSis = p.nombreSistema;
   var nomP = { hoy: 'hoy', semana: 'esta semana', mes: 'este mes', todo: 'desde el inicio' }[p.periodo] || ('en ' + nombreMes(mesDelPeriodo(p.periodo)));
   var e = p.equipo, d = p.dash, tot = d.total;
   // meses con datos para el selector
@@ -1328,8 +1335,8 @@ function pintarPanel(p, q, antYm) {
   sel.value = elegido;
   // M2M: el mismo cálculo para este mes y el anterior
   var met = function (pp) {
-    var t = pp.dash.total, au = (t.auditadas || 0) + (t.errSistema || 0), np = (t.mal || 0) + (t.errSistema || 0), dec = (t.bien || 0) + np;
-    return { casos: t.casos || 0, aud: au, pProc: dec ? (t.bien || 0) / dec : null, pNp: dec ? np / dec : null, cumpl: pp.equipo.cumplimiento, est: t.errorEstimado };
+    var t = pp.dash.total, c = cuentas(t);
+    return { casos: t.casos || 0, aud: c.au, pProc: c.dec ? c.proc / c.dec : null, pNp: c.dec ? c.np / c.dec : null, cumpl: pp.equipo.cumplimiento, est: t.errorEstimado };
   };
   var A = q ? met(q) : null, mAnt = antYm ? MESES[+antYm.slice(5, 7) - 1] : '';
   var vsCant = function (a, b) {
@@ -1347,9 +1354,7 @@ function pintarPanel(p, q, antYm) {
   };
   var M = met(p);
   var metaHoy = Math.max(e.meta || 0, e.hoyAsignadas || 0);
-  var auditados = (tot.auditadas || 0) + (tot.errSistema || 0);
-  var noProc = (tot.mal || 0) + (tot.errSistema || 0);
-  var decididos = (tot.bien || 0) + noProc;
+  var ct = cuentas(tot), auditados = ct.au, noProc = ct.np, decididos = ct.dec, proced = ct.proc, sisAud = (tot.errSistema || 0) + (tot.descartados || 0);
 
   // indicadores: casos de las sábanas, cuántos se auditaron y cuántos proceden o no
   var k = clear($('pTiles'));
@@ -1357,13 +1362,14 @@ function pintarPanel(p, q, antYm) {
     [tot.casos ? d.skills.filter(function (x) { return x.casos; }).map(function (x) { return chipTxt(x.skill) + ': ' + miles(x.casos); }).join(', ') : 'Se llena al cargar la próxima sábana',
      tot.casos ? 'Cargados ' + nomP : '', vsCant(M.casos, A && A.casos)]));
   k.appendChild(tile('gris', 'Auditados', 'tAuditados', miles(auditados),
-    [tot.casos ? pct1(auditados / tot.casos) + ' de los casos de las sábanas' : '', 'Equipo: ' + miles(tot.auditadas) + ', sistema: ' + miles(tot.errSistema),
+    [tot.casos ? pct1(auditados / tot.casos) + ' de los casos de las sábanas' : '', 'Equipo: ' + miles(tot.auditadas) + ', ' + nomSis() + ': ' + miles(sisAud),
      tot.consultar ? tot.consultar + ' para consultar a Calidad' : '', vsCant(M.aud, A && A.aud)]));
-  k.appendChild(tile('negro', 'Procedentes', 'tProc', miles(tot.bien),
-    [decididos ? pct1(tot.bien / decididos) + ' de lo auditado' : 'Todavía sin auditorías', vsPts(M.pProc, A && A.pProc)], decididos ? tot.bien / decididos : undefined));
+  k.appendChild(tile('negro', 'Procedentes', 'tProc', miles(proced),
+    [decididos ? pct1(proced / decididos) + ' de lo auditado' : 'Todavía sin auditorías',
+     tot.descartados ? 'Equipo: ' + miles(tot.bien) + ', ' + nomSis() + ': ' + miles(tot.descartados) : '', vsPts(M.pProc, A && A.pProc)], decididos ? proced / decididos : undefined));
   k.appendChild(tile('rojo', 'No procedentes', 'tNoProc', miles(noProc),
-    [decididos ? pct1(noProc / decididos) + ' de lo auditado' : '', 'Equipo: ' + miles(tot.mal) + ', sistema: ' + miles(tot.errSistema),
-     tot.descartados ? tot.descartados + ' del sistema pasados a procedente' : '', vsPts(M.pNp, A && A.pNp)], decididos ? noProc / decididos : undefined));
+    [decididos ? pct1(noProc / decididos) + ' de lo auditado' : '', 'Equipo: ' + miles(tot.mal) + ', ' + nomSis() + ': ' + miles(tot.errSistema),
+     tot.descartados ? tot.descartados + ' de ' + nomSis() + ' pasados a procedente' : '', vsPts(M.pNp, A && A.pNp)], decididos ? noProc / decididos : undefined));
   k.appendChild(tile('negro', 'Cumplimiento', 'tCumpl', pct(e.cumplimiento),
     ['Hoy: ' + e.hoyHechas + (metaHoy ? ' de ' + metaHoy : ''), 'Pendientes: ' + e.pendientes + (e.atrasadas ? ' (' + e.atrasadas + ' atrasados)' : ''), vsPts(M.cumpl, A && A.cumpl)], e.cumplimiento));
   var muestra = (tot.bien || 0) + (tot.mal || 0);
@@ -1376,17 +1382,17 @@ function pintarPanel(p, q, antYm) {
   ts.appendChild(h('tr', null, th('Skill', 'dSkill'), th('Casos en la sábana', 'dCasos', 'num'), th('Auditados', 'dAud', 'num'),
     th('% auditado', 'dPctAud', 'num'), th('Procedentes', 'dProc', 'num'), th('No proc. sistema', 'dNpSis', 'num'), th('No proc. equipo', 'dNpEq', 'num'),
     th('% no procedente', 'dPctNp', 'num'), A ? th('vs ' + mAnt, 'dVs', 'num') : null, th('Cumplimiento', 'dCumpl'), th('% no proc. estimado', 'dEstimado', 'num')));
-  var pNpDe = function (x) { if (!x) return null; var np = (x.mal || 0) + (x.errSistema || 0), dec = (x.bien || 0) + np; return dec ? np / dec : null; };
+  var pNpDe = function (x) { if (!x) return null; var c = cuentas(x); return c.dec ? c.np / c.dec : null; };
   var skAnt = function (sk) { return q ? (sk === 'Total' ? q.dash.total : q.dash.skills.filter(function (y) { return y.skill === sk; })[0]) : null; };
   function filaSkill(x, total) {
     var b = h('div', { cls: 'bar' }, h('i')); setBar(b, x.cumplimiento);
-    var au = (x.auditadas || 0) + (x.errSistema || 0), np = (x.mal || 0) + (x.errSistema || 0), dec = (x.bien || 0) + np, mu = (x.bien || 0) + (x.mal || 0);
+    var cx = cuentas(x), au = cx.au, np = cx.np, dec = cx.dec, mu = (x.bien || 0) + (x.mal || 0);
     return h('tr', total ? { cls: 'total' } : null,
       h('td', null, total ? 'Total' : chipSkill(x.skill)),
       h('td', { cls: 'num', text: miles(x.casos) }),
       h('td', { cls: 'num', text: miles(au) }),
       h('td', { cls: 'num', text: x.casos ? pct1(au / x.casos) : '–' }),
-      h('td', { cls: 'num', text: miles(x.bien) }),
+      h('td', { cls: 'num', text: miles(cx.proc) }),
       h('td', { cls: 'num' + (x.errSistema ? ' rojo' : ''), text: miles(x.errSistema) }),
       h('td', { cls: 'num' + (x.mal ? ' rojo' : ''), text: miles(x.mal) }),
       h('td', { cls: 'num', 'data-tip': dec ? np + ' no procedentes de ' + dec + ' auditados con resultado' : null }, h('b', { text: dec ? pct1(np / dec) : '–' })),
@@ -1485,7 +1491,8 @@ function nombreRes(res) {
 }
 
 /* lo que va auditando el equipo (abajo del Dashboard) */
-var SISTEMA = 'Sistema';
+var SISTEMA = '__sistema';   // valor del filtro; el nombre que se ve sale de CONFIG › AUDITOR_SISTEMA
+function nomSis() { return S.nomSis || 'Ariel Velasquez'; }
 function pintarActividad() {
   var lista = S.actividad || [], sis = S.actividadSis || [], quien = $('aQuien'), antes = quien.value;
   // los casos del equipo y los que marcó el sistema, juntos y del más reciente al más viejo
@@ -1495,7 +1502,7 @@ function pintarActividad() {
   var nombres = {};
   lista.forEach(function (c) { nombres[c.auditadoPor || c.auditor] = 1; });
   clear(quien).appendChild(h('option', { value: '', text: 'Todos (equipo y sistema)' }));
-  quien.appendChild(h('option', { value: SISTEMA, text: 'Sistema (revisión automática)' }));
+  quien.appendChild(h('option', { value: SISTEMA, text: nomSis() + ' (revisión automática)' }));
   Object.keys(nombres).sort().forEach(function (n) { quien.appendChild(h('option', { value: n, text: n })); });
   if (antes && (nombres[antes] || antes === SISTEMA)) quien.value = antes;
   var fq = quien.value, fr = $('aRes').value;
@@ -1509,7 +1516,7 @@ function pintarActividad() {
       var x = o.x, np = x.resultado === 'NO PROCEDENTE';
       t.appendChild(h('tr', { cls: 'click', on: { click: function () { abrirSistemaDesde(x); } } },
         h('td', { text: fechaCorta(x.registrado) }),
-        h('td', null, h('b', { text: SISTEMA }), h('div', { cls: 'small muted', text: 'revisión automática' })),
+        h('td', null, h('b', { text: nomSis() }), h('div', { cls: 'small muted', text: 'revisión automática' })),
         h('td', null, h('b', { text: x.caso }), h('div', null, chipSkill(x.skill))),
         h('td', { text: x.asesor }),
         h('td', null, h('div', { cls: 'trunc ruta', text: x.ruta, title: x.ruta }), h('div', { cls: 'small muted trunc', text: x.resolucion })),
@@ -1541,18 +1548,30 @@ function abrirSistemaDesde(x) { S.verSis = x; ir('sistema'); }
 function descargarExcel() {
   var b = $('pExcel'); b.disabled = true; b.textContent = 'Preparando…';
   Promise.all([cargarXLSX(), api('api_exportar', S.ses, S.periodo)]).then(function (x) {
-    var r = x[1], wb = XLSX.utils.book_new();
-    var hoja = function (hdr, filas, anchos, nombre) {
-      var ws = XLSX.utils.aoa_to_sheet([hdr].concat(filas));
-      ws['!cols'] = hdr.map(function (h0, i) { return { wch: anchos[i] || 16 }; });
-      ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filas.length, c: hdr.length - 1 } }) };
-      XLSX.utils.book_append_sheet(wb, ws, nombre);
-    };
-    var anchoC = r.casosHdr.map(function (h0) { return /Comentario|Cierre|Pistas|Observación/.test(h0) ? 60 : /Ruta/.test(h0) ? 45 : /Asesor|Auditor|Patrón|Resultado/.test(h0) ? 26 : 14; });
-    hoja(r.casosHdr, r.casos, anchoC, 'Auditorías');
-    hoja(r.sistemaHdr, r.sistema, [12, 17, 18, 11, 16, 30, 60, 45, 26, 28, 9, 60, 22, 20, 17, 40], 'No procedentes del sistema');
+    var r = x[1], wb = XLSX.utils.book_new(), nom = r.nombreSistema || nomSis();
+    // una sola hoja: lo del equipo y lo de la revisión automática (con «Auditado por» = nombre de CONFIG › AUDITOR_SISTEMA)
+    var extra = ['Origen', 'Regla del sistema', 'Revisión del supervisor', 'Revisado por', 'Fecha de revisión', 'Observación de la revisión'];
+    var hdr = r.casosHdr.concat(extra), col = {};
+    r.casosHdr.forEach(function (h0, i) { col[h0] = i; });
+    var equipo = r.casos.map(function (f) { return f.concat(['Equipo', '', '', '', '', '']); });
+    var sis = r.sistema.map(function (y) {   // [fechaSabana, registrado, skill, caso, resultado, regla, detalle, ruta, resolucion, asesor, tipo, comentario, revision, revisadoPor, fechaRevision, obsRevision]
+      var f = r.casosHdr.map(function () { return ''; });
+      var pon = function (k, v) { if (col[k] != null) f[col[k]] = v == null ? '' : v; };
+      pon('ID', String(y[0]).replace(/-/g, '') + '-' + y[3]); pon('Fecha sábana', y[0]); pon('Asignado', y[1]); pon('Mes', String(y[1]).slice(0, 7));
+      pon('Auditor', nom); pon('Skill', y[2]); pon('Caso', y[3]); pon('Tipo', y[10]); pon('Ruta tipificada', y[7]); pon('Resolución', y[8]);
+      pon('Asesor', y[9]); pon('Comentario', y[11]); pon('Estado', 'AUDITADO'); pon('Fecha auditoría', y[1]); pon('Resultado', y[4]);
+      pon('Error principal', y[4] === 'NO PROCEDENTE' ? 'Motivo / ruta' : ''); pon('Patrón de error', y[5]); pon('Observación', y[6]);
+      pon('Auditado por', nom);
+      return f.concat(['Revisión automática', y[5], y[12], y[13], y[14], y[15]]);
+    });
+    var iF = col['Fecha sábana'];
+    var filas = equipo.concat(sis).sort(function (a, c) { return String(a[iF]).localeCompare(String(c[iF])); });
+    var ws = XLSX.utils.aoa_to_sheet([hdr].concat(filas));
+    ws['!cols'] = hdr.map(function (h0) { return { wch: /Comentario|Cierre|Pistas|Observación/.test(h0) ? 60 : /Ruta|Regla/.test(h0) ? 45 : /Asesor|Auditor|Patrón|Resultado|Revisión|Revisado/.test(h0) ? 26 : 14 }; });
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filas.length, c: hdr.length - 1 } }) };
+    XLSX.utils.book_append_sheet(wb, ws, 'Auditorías');
     XLSX.writeFile(wb, 'Auditorias_' + String(r.periodo).replace(':', '_') + '_' + r.hoy + '.xlsx');
-    toast('Descargado: ' + r.casos.length + ' auditorías y ' + r.sistema.length + ' no procedentes del sistema');
+    toast('Descargado: ' + filas.length + ' casos (' + r.casos.length + ' del equipo y ' + r.sistema.length + ' de ' + nom + ')');
   }).catch(function (e) { toast(errMsg(e), true); }).then(function () { b.disabled = false; b.textContent = 'Descargar Excel'; });
 }
 
