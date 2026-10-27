@@ -1078,9 +1078,11 @@ function sugerenciasDe(c) {
     if (g.sk !== sk) return;
     var m = g.rx.exec(com); if (!m) return;
     var tips = g.tips.map(nrm);
-    var cand = mias.filter(function (r) { return tips.indexOf(r.tip) >= 0 && (!g.serv || g.serv.test(r.serv)) && r.r4 !== r4Caso; });
+    var cand = mias.filter(function (r) { return tips.indexOf(r.tip) >= 0 && (!g.serv || g.serv.test(r.serv)); });
+    // si el servicio del caso tiene esa ruta, solo esa (aunque sea la misma que usó el asesor: entonces no hay nada que sugerir)
     var mismo = cand.filter(function (r) { return r.serv === servCaso; });
     if (mismo.length) cand = mismo;
+    cand = cand.filter(function (r) { return r.r4 !== r4Caso; });
     // una sugerencia por ruta (sin la resolución): al tocarla se elige la resolución
     var por4 = {};
     cand.forEach(function (r) { (por4[r.r4] || (por4[r.r4] = [])).push(r); });
