@@ -1630,8 +1630,18 @@ function revisarSis(x, rev) {
   api('api_revisarSistema', S.ses, x.id, rev, obs).then(function (nuevo) {
     var i = S.sis.casos.indexOf(x); if (i >= 0) S.sis.casos[i] = nuevo;
     S.revisando = false;
-    pintarSistema(); verSistema(nuevo.id);
-    toast(rev ? 'Caso ' + nuevo.caso + ': ' + rev : 'Se quitó la revisión del caso ' + nuevo.caso);
+    pintarSistema();
+    if (!rev) { verSistema(nuevo.id); toast('Se quitó la revisión del caso ' + nuevo.caso); return; }
+    // sigue con el próximo que todavía no se ha revisado (hacia abajo y, si no hay, desde arriba)
+    var lista = S.sis.casos, sig = null;
+    for (var k = 1; k <= lista.length && !sig; k++) { var c = lista[(i + k) % lista.length]; if (c && !c.revision) sig = c; }
+    if (sig) {
+      verSistema(sig.id);
+      toast('Caso ' + nuevo.caso + ': ' + rev + '. Sigue el caso ' + sig.caso + '.');
+    } else {
+      clear($('sDetalle')).classList.add('hidden');
+      toast('Caso ' + nuevo.caso + ': ' + rev + '. Ya no quedan casos sin revisar en este período.');
+    }
   }).catch(function (e) {
     S.revisando = false;
     document.querySelectorAll('#sDetalle .acciones button').forEach(function (b) { b.disabled = false; });
