@@ -477,7 +477,7 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
           <li><b>Tecnología contradictoria:</b> el comentario dice una tecnología (DTH, HFC, GPON, IPTV, WTTH, IFI) y la ruta es de otra. Ej.: «tv DTH» con ruta TV HFC.</li>
           <li><b>Abandono o corte con motivo escrito:</b> tipificó «Cliente Corto» o «Cliente abandona interacción», pero el comentario dice por qué llamó el cliente.</li>
         </ul>
-        <div class="small muted" style="margin-top:6px" id="sNota">Si el sistema se equivoca, el supervisor abre el caso y lo marca «Es procedente», con el motivo: así deja de contar y se afinan las reglas.</div>
+        <div class="small muted" style="margin-top:6px" id="sNota">Si el sistema se equivoca, abran el caso y márquenlo «Es procedente», con el motivo: así deja de contar y se afinan las reglas.</div>
       </div>
       <div class="card pad sisdet hidden" id="sDetalle"></div>
       <div class="card">
@@ -659,7 +659,7 @@ var AYUDA = {
   dPctAud: 'Auditados ÷ casos de la sábana.',
   dAud: 'Auditados con resultado: equipo + no procedentes del sistema.',
   porSkill: 'El sistema revisa todos los casos de las sábanas y marca los no procedentes claros. El equipo audita una muestra de lo que queda.',
-  tNoProc: 'Casos auditados que no proceden: los que marcó el equipo más los que marcó el sistema (sin los que el supervisor pasó a «Es procedente»), y su % sobre lo auditado con resultado.',
+  tNoProc: 'Casos auditados que no proceden: los que marcó el equipo más los que marcó el sistema (sin los que el equipo pasó a «Es procedente»), y su % sobre lo auditado con resultado.',
   tProc: 'Casos auditados que están bien tipificados (incluye «Procedente, comentario incompleto»), y su % sobre lo auditado con resultado.\n«Consultar a Calidad» no cuenta.',
   tAuditados: 'Casos con resultado: los que auditó el equipo más los que el sistema marcó como no procedentes, y qué % son del total de la sábana.',
   // bandeja y caso
@@ -715,13 +715,13 @@ var AYUDA = {
   sCaso: 'Número del caso en Qflow.',
   sRegla: 'Regla automática que encontró el no procedente.',
   sPorque: 'Qué leyó el sistema en el comentario y por qué no cuadra con la ruta.',
-  sEstado: 'NO PROCEDENTE: cuenta para el asesor.\nPROCEDENTE: el supervisor lo revisó y lo pasó a procedente; ya no cuenta.\nToque la fila para ver el caso completo.',
+  sEstado: 'NO PROCEDENTE: cuenta para el asesor.\nPROCEDENTE: alguien del equipo lo revisó y lo pasó a procedente; ya no cuenta.\nDebajo sale quién lo revisó.\nToque la fila para ver el caso completo.',
   excel: 'Descarga un Excel con todo el período elegido (Hoy, Esta semana, Este mes o Todo), en una sola hoja:\n• Cada caso asignado al equipo, auditado o pendiente, con P1 a P4, resultado, patrón, observación y quién lo auditó.\n• Los casos que marcó la revisión automática (Origen = «Revisión automática»), con la regla y la revisión del supervisor.\nFiltren la columna «Origen» o «Auditado por» para separarlos.',
   cHoy: 'Desmarca a quien no trabaja hoy (libre o de vacaciones): ese día no recibe casos. Los demás reciben su cantidad normal.\nLos checks se quedan así todo el día en esta computadora, aunque suban otra sábana o recarguen la página. Al día siguiente vuelven a salir todos marcados.',
   pMes: 'Elige un mes completo para ver sus cifras, la tabla de lo auditado y el Excel.\nAl ver un mes («Este mes» o uno de la lista), cada indicador se compara con el mes anterior (M2M).',
   dVs: 'Cambio del % no procedente contra el mes anterior, en puntos (pts). ▲ subió, ▼ bajó.',
   como: 'Abre la bandeja de un compañero para ayudarle con sus casos. El caso sigue siendo de esa persona, pero queda tu nombre como quien lo auditó.\nUna auditoría ya hecha solo la puede cambiar quien la hizo o el supervisor.',
-  sObs: '«Es procedente» pide escribir por qué: el caso deja de contar y con eso se afina la regla.\n«Confirmar no procedente» deja constancia de que el supervisor lo revisó.',
+  sObs: '«Es procedente» pide escribir por qué: el caso deja de contar y con eso se afina la regla.\n«Confirmar no procedente» deja constancia de quién lo revisó.\nLo puede revisar cualquiera del equipo; uno ya revisado solo lo cambia quien lo revisó o el supervisor.',
   // cargar sábana
   cAuditor: 'Auditores activos que reciben casos. Se cambian en la pestaña AUDITORES de la hoja de Google.',
   cSkillCuota: 'Casos de este skill que recibe cada día.',
@@ -1321,7 +1321,7 @@ function tile(color, lbl, tip, val, subs, x) {
   (subs || []).forEach(function (txt) { if (txt) t.appendChild(h('div', { cls: 'sub', text: txt })); });
   return t;
 }
-/** Totales que se ven: equipo + revisión automática. Los del sistema que el supervisor pasó a procedente
+/** Totales que se ven: equipo + revisión automática. Los del sistema que el equipo pasó a procedente
  *  («descartados») cuentan como auditados y procedentes (así cuadra con el Excel). */
 function cuentas(x) {
   var desc = x.descartados || 0, np = (x.mal || 0) + (x.errSistema || 0), proc = (x.bien || 0) + desc;
@@ -1557,7 +1557,7 @@ function descargarExcel() {
   Promise.all([cargarXLSX(), api('api_exportar', S.ses, S.periodo)]).then(function (x) {
     var r = x[1], wb = XLSX.utils.book_new(), nom = r.nombreSistema || nomSis();
     // una sola hoja: lo del equipo y lo de la revisión automática (con «Auditado por» = nombre de CONFIG › AUDITOR_SISTEMA)
-    var extra = ['Origen', 'Regla del sistema', 'Revisión del supervisor', 'Revisado por', 'Fecha de revisión', 'Observación de la revisión'];
+    var extra = ['Origen', 'Regla del sistema', 'Revisión', 'Revisado por', 'Fecha de revisión', 'Observación de la revisión'];
     var hdr = r.casosHdr.concat(extra), col = {};
     r.casosHdr.forEach(function (h0, i) { col[h0] = i; });
     var equipo = r.casos.map(function (f) { return f.concat(['Equipo', '', '', '', '', '']); });
@@ -1598,8 +1598,8 @@ function pintarSistema() {
   var r = S.sis, t = clear($('tSistema'));
   var pedido = S.verSis; S.verSis = null;   // caso que se abrió desde el Dashboard
   if (pedido && !r.casos.some(function (c) { return c.id === pedido.id; })) r.casos.unshift(pedido);
-  $('sNota').textContent = r.supervisor
-    ? 'Toque un caso para revisarlo. Si el sistema se equivocó, márquelo «Es procedente» y escriba por qué: deja de contar y con eso se afinan las reglas.'
+  $('sNota').textContent = (r.supervisor || r.puedeRevisar)
+    ? 'Toque un caso para revisarlo. Si el sistema se equivocó, márquelo «Es procedente» y escriba por qué: deja de contar y con eso se afinan las reglas. Un caso ya revisado solo lo cambia quien lo revisó o el supervisor.'
     : 'Toque un caso para ver el detalle. Si cree que el sistema se equivocó, avísele al supervisor: él lo puede marcar «Es procedente».';
   $('sistemaVacio').classList.toggle('hidden', r.casos.length > 0);
   if (!r.casos.length) return;
@@ -1635,7 +1635,10 @@ function verSistema(id) {
   d.appendChild(h('div', { cls: 'coment', text: x.comentario || '(sin comentario)' }));
   if (x.revision) d.appendChild(h('div', { cls: 'small', style: 'margin-top:10px' }, h('b', { text: 'Revisión: ' }),
     x.revision + ' · ' + x.revisadoPor + ' · ' + fechaCorta(x.fechaRevision), x.obsRevision ? h('div', { text: 'Observación: ' + x.obsRevision }) : null));
-  if (S.sis.supervisor) {
+  var puede = puedeRevisarSis(x);
+  if (!puede && x.revision && S.sis.puedeRevisar) d.appendChild(h('div', { cls: 'small muted', id: 'sAjeno', style: 'margin-top:10px',
+    text: 'Lo revisó ' + x.revisadoPor + ': solo ' + x.revisadoPor + ' o el supervisor lo pueden cambiar.' }));
+  if (puede) {
     var obs = h('textarea', { id: 'sObs', maxlength: '500', placeholder: 'Por qué es procedente (obligatorio para «Es procedente»)' });
     obs.value = x.obsRevision || '';
     d.appendChild(h('div', { cls: 'fld', style: 'margin-top:12px' },
@@ -1646,6 +1649,12 @@ function verSistema(id) {
       x.revision ? h('button', { cls: 'btn', id: 'sQuitar', text: 'Quitar la revisión', on: { click: function () { revisarSis(x, ''); } } }) : null));
   }
   window.scrollTo({ top: Math.max(0, d.getBoundingClientRect().top + window.pageYOffset - 80), behavior: 'smooth' });
+}
+/** Revisa cualquiera del equipo; uno ya revisado solo lo cambia quien lo revisó o el supervisor. */
+function puedeRevisarSis(x) {
+  if (S.sis.supervisor) return true;
+  if (!S.sis.puedeRevisar) return false;
+  return !x.revision || nrm(x.revisadoPor) === nrm(S.sis.yo);
 }
 function revisarSis(x, rev) {
   if (S.revisando) return;
