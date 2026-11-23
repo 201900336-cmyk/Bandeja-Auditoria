@@ -378,14 +378,14 @@ tr.apagado td{color:#a0a0a0;text-decoration:line-through} tr.apagado td:first-ch
           <h3 style="margin-bottom:10px">Auditoría<span class="ayuda" data-tip="Conteste las 4 preguntas con Sí, No o Duda. Lo obligatorio que falta se marca en rojo y no deja guardar. Pase el cursor por cada «?» para ver qué va en cada campo.">?</span></h3>
           <div id="qs"></div>
           <div class="fld" id="fPatron"><label for="iPatron">Motivo del no procedente <span class="req hidden">*</span><span class="ayuda" data-tip="AYUDA:patron">?</span></label><select id="iPatron"></select></div>
-          <div class="fld" id="fRuta"><label for="iRuta">Ruta correcta <span class="req hidden">*</span><span class="ayuda" data-tip="AYUDA:rutaCorrecta">?</span></label>
+          <div class="fld hidden" id="fRuta"><label for="iRuta">Ruta correcta <span class="req hidden">*</span><span class="ayuda" data-tip="AYUDA:rutaCorrecta">?</span></label>
             <div id="rSug" class="rsug hidden"></div>
             <div id="rChips" class="rchips"></div>
             <div class="rbox hidden" id="rBox"><input id="rBuscar" autocomplete="off" aria-label="Buscar la ruta correcta" placeholder="Busquen la ruta: por ejemplo «gpon no navega»"><div id="rLista" class="rlista hidden"></div></div>
             <input id="iRuta" maxlength="1500" placeholder="Mercado › Nivel II › Nivel III › Nivel IV › Resolución">
             <div id="rNota" class="small muted" style="margin-top:4px"></div></div>
           <div class="fld" id="fObs"><label for="iObs">Observación <span class="req hidden">*</span><span class="ayuda" data-tip="AYUDA:observacion">?</span></label>
-            <textarea id="iObs" maxlength="1500" placeholder="Qué faltó, qué duda tiene o qué vio"></textarea></div>
+            <textarea id="iObs" maxlength="1500" placeholder="Por qué no procede, qué duda tiene o qué vio"></textarea></div>
           <div class="res"><span class="small muted">RESULTADO:<span class="ayuda" data-tip="AYUDA:resultado">?</span></span><span class="pill PEND" id="cPill">PENDIENTE</span><span class="small" id="cErr"></span></div>
           <div class="faltan" id="cFaltan"></div>
           <div class="acciones">
@@ -678,17 +678,17 @@ var AYUDA = {
   resolucion: 'Lo que el asesor dice que hizo.\nEn P2 revise que el comentario lo respalde.',
   comentario: 'Lo que escribió el asesor: el motivo real, lo que hizo y cómo terminó.\nLos datos personales vienen tapados: [nombre], [número], [correo], [dirección].',
   cierre: 'Lo que escribió el área que recibió el escalamiento (WF). Ayuda a decidir P3.',
-  p1: '¿La ruta es el motivo real del cliente?\nSí: la ruta dice lo que el cliente pidió o reportó, en el servicio correcto.\nNo: es de otro motivo o de otro servicio. Se piden el Motivo del no procedente y la Ruta correcta.\nDuda: no está seguro. Se pide una Observación y el caso queda para consultar a Calidad.',
-  p2: '¿La resolución es lo que hizo el asesor?\nSí: lo que dice la resolución está en el comentario.\nNo: dice algo que no se hizo, o se hizo otra cosa. Se piden el Motivo del no procedente y la Ruta correcta.\nDuda: se pide una Observación.',
+  p1: '¿La ruta es el motivo real del cliente?\nSí: la ruta dice lo que el cliente pidió o reportó, en el servicio correcto.\nNo: es de otro motivo o de otro servicio. Se piden el Motivo del no procedente y una Observación.\nDuda: no está seguro. Se pide una Observación y el caso queda para consultar a Calidad.',
+  p2: '¿La resolución es lo que hizo el asesor?\nSí: lo que dice la resolución está en el comentario.\nNo: dice algo que no se hizo, o se hizo otra cosa. Se piden el Motivo del no procedente y una Observación.\nDuda: se pide una Observación.',
   p3: '¿El cierre es correcto?\nUnidad = resuelto en la llamada. WF = escalado.\nNo: por ejemplo, dice que escaló y quedó en Unidad. Se pide el Motivo del no procedente.\nDuda: se pide una Observación.',
   p4: '¿El comentario está completo?\nSí: se entiende el motivo, qué se hizo y cómo terminó (con el número de avería u orden, si aplica).\nNo: falta algo de eso. No cambia la tipificación: el resultado queda «Procedente, comentario incompleto».',
   patron: 'Por qué el caso no procede. Se elige de la lista.\nEs obligatorio si contestó «No» en P1, P2 o P3.\nCon esto el Dashboard muestra los no procedentes más frecuentes para la retroalimentación.',
   rutaCorrecta: 'La ruta que debió usar el asesor: Motivo › Categoría › Servicio › Tipificación › Resolución.\nEs obligatoria si P1 o P2 es «No». Sirve para corregir al asesor.\nEscriban unas palabras (por ejemplo «gpon no navega») y elijan de la lista: solo salen las rutas de Qflow del skill del caso (Fijo o Móvil) y las de «Información». Pueden elegir varias si el asesor pudo usar cualquiera de ellas; se quitan con la ✕.\n«Sugerida por el comentario»: el sistema leyó una palabra clave en el comentario. Solo es una ayuda: agréguenla únicamente si es la correcta.',
   rutasQflow: 'Solo el supervisor. Suban el archivo del árbol de Qflow (hoja «Rutas Qflow» y hoja «Cruce», que dice de qué skill es cada servicio).\nCon eso se arma la lista de «Ruta correcta» de cada skill. Se guarda en la pestaña RUTAS de la hoja (no en la página).\nCuando Qflow cambie sus rutas, vuelvan a subir el archivo: se reemplaza la lista y no se toca ninguna auditoría.',
-  observacion: 'Explique en pocas palabras lo que vio.\nEs obligatoria si marcó alguna «Duda» o si el patrón es «Otro», para que Calidad entienda el caso sin leerlo todo de nuevo.',
+  observacion: 'Explique en pocas palabras lo que vio, por ejemplo: «el comentario dice GPON y la ruta es HFC» o «el cliente reportó lentitud, no caída».\nEs obligatoria si el caso es no procedente, si marcó alguna «Duda» o si el patrón es «Otro»: con eso se le da la retroalimentación al asesor.',
   resultado: 'Se calcula solo con las respuestas:\n• Algún «No» en P1, P2 o P3 = NO PROCEDENTE.\n• Alguna «Duda» = CONSULTAR A CALIDAD (no cuenta en los %).\n• Solo P4 en «No» = PROCEDENTE, COMENTARIO INCOMPLETO.\n• Todo «Sí» = PROCEDENTE.',
   auditado: 'Fecha en que guardó la auditoría. Toque la fila para abrirla y corregirla.',
-  patronRuta: 'El motivo del no procedente y la ruta correcta que se escribieron.',
+  patronRuta: 'El motivo del no procedente (y la ruta correcta, en las auditorías de antes que la tienen).',
   // dashboard: indicadores
   tCasos: 'Todos los casos de Fijo y Móvil de las sábanas que se cargaron en el período. Se van sumando cada día.',
   tCumpl: 'Auditadas ÷ asignadas del período. La meta es 100 %.',
@@ -1187,7 +1187,6 @@ function abrirCaso(id, origen) {
   $('cCierre').textContent = c.cierre || '';
   $('cCierreBox').classList.toggle('hidden', !c.cierre);
   $('iPatron').value = c.patron || ''; $('iRuta').value = c.rutaCorrecta || ''; $('iObs').value = c.observacion || '';
-  prepararRuta(c);
   pintarPreguntas(); validarForm();
   var pos = origen === 'bandeja' ? (S.bandeja.indexOf(c) + 1) + ' de ' + S.bandeja.length + ' pendientes' : 'Corrigiendo una auditoría guardada';
   $('cPos').textContent = pos;
@@ -1215,8 +1214,16 @@ function llenarPatrones() {
   (S.user.patrones || []).forEach(function (p) { sel.appendChild(h('option', { value: p, text: p })); });
 }
 function respuestas() {
-  return { p1: S.resp.p1, p2: S.resp.p2, p3: S.resp.p3, p4: S.resp.p4,
+  var v = { p1: S.resp.p1, p2: S.resp.p2, p3: S.resp.p3, p4: S.resp.p4,
     patron: $('iPatron').value.trim(), rutaCorrecta: $('iRuta').value.trim(), observacion: $('iObs').value.trim() };
+  // «Ruta correcta» ya no se pide (se conserva la de auditorías viejas). Un servidor anterior a la 1.15 todavía la exige.
+  if (!v.rutaCorrecta && (v.p1 === 'No' || v.p2 === 'No') && servidorAntes('1.15')) v.rutaCorrecta = '(ver observación)';
+  return v;
+}
+function servidorAntes(ver) {
+  var a = String((S.user && S.user.version) || '0').split('.').map(Number), b = ver.split('.').map(Number);
+  for (var i = 0; i < b.length; i++) { if ((a[i] || 0) !== b[i]) return (a[i] || 0) < b[i]; }
+  return false;
 }
 /* misma regla que faltantes_() del servidor */
 function faltantes(v) {
@@ -1225,8 +1232,7 @@ function faltantes(v) {
   var hayNo = [v.p1, v.p2, v.p3].indexOf('No') >= 0;
   var hayDuda = [v.p1, v.p2, v.p3, v.p4].indexOf('Duda') >= 0;
   if (hayNo && !v.patron) falta.push('Motivo del no procedente');
-  if ((v.p1 === 'No' || v.p2 === 'No') && !v.rutaCorrecta) falta.push('Ruta correcta');
-  if ((hayDuda || /^otro/i.test(v.patron)) && !v.observacion) falta.push('Observación');
+  if ((hayNo || hayDuda || /^otro/i.test(v.patron)) && !v.observacion) falta.push('Observación');
   return falta;
 }
 function calcular(v) {
@@ -1241,10 +1247,10 @@ function validarForm() {
   var v = respuestas(), falta = faltantes(v);
   var hayNo = [v.p1, v.p2, v.p3].indexOf('No') >= 0;
   var hayDuda = [v.p1, v.p2, v.p3, v.p4].indexOf('Duda') >= 0;
-  var req = { fPatron: hayNo, fRuta: v.p1 === 'No' || v.p2 === 'No', fObs: hayDuda || /^otro/i.test(v.patron) };
+  var req = { fPatron: hayNo, fObs: hayNo || hayDuda || /^otro/i.test(v.patron) };
   Object.keys(req).forEach(function (id) {
     var f = $(id); f.querySelector('.req').classList.toggle('hidden', !req[id]);
-    var nom = id === 'fPatron' ? 'Motivo del no procedente' : id === 'fRuta' ? 'Ruta correcta' : 'Observación';
+    var nom = id === 'fPatron' ? 'Motivo del no procedente' : 'Observación';
     f.classList.toggle('falta', falta.indexOf(nom) >= 0);
   });
   ['p1', 'p2', 'p3', 'p4'].forEach(function (k, i) { $('q_' + k).classList.toggle('falta', falta.indexOf('P' + (i + 1)) >= 0); });
@@ -1718,9 +1724,9 @@ function cargarEstado() {
 }
 /* el supervisor sube el árbol de rutas de Qflow (hoja «Rutas Qflow» + hoja «Cruce» servicio → skill) */
 function pintarRutasQflow() {
+  $('rQflow').classList.add('hidden');   // «Ruta correcta» ya no se usa: el árbol no hace falta
+  if (true) return;
   var sup = S.user && S.user.rol === 'SUPERVISOR';
-  $('rQflow').classList.toggle('hidden', !sup);
-  if (!sup) return;
   cargarRutas().then(function (rs) {
     var por = {}; rs.forEach(function (r) { por[r.sk] = (por[r.sk] || 0) + 1; });
     $('rQEstado').textContent = rs.length
